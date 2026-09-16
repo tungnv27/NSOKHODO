@@ -1,9 +1,9 @@
 # NSOKHODO — Kho đồ chung cho Ninja School Online
 
-> **Trạng thái: ✅ ĐÃ CHỐT — SPEC v1.1 (2026-09-16, 7 vòng với user; v1.1 = dùng trọn .NET 4.5.2, D49). CHƯA CODE.**
+> **Trạng thái: ✅ ĐÃ CHỐT — SPEC v1.2 (2026-09-16, 8 vòng với user; v1.1 = .NET 4.5.2 (D49); v1.2 = làm một lượt + bố cục A (D50, D51)). ĐANG CODE.**
 > Sửa spec sau mốc này thì ghi thêm một vòng ở §1 và một dòng quyết định ở §2, **không sửa ngầm**.
 > **Test tay (P0a) XONG:** T0 cho thấy **giao dịch KHÔNG khoá đồ** → thiết kế đi tiếp. Kết quả đầy đủ: `TEST_TAY.md`.
-> **Việc tiếp theo:** P0b — dựng khung project và đo những gì tay không đo được (§13). **Chỉ bắt đầu khi user ra lệnh.**
+> **Việc đang làm:** code một lượt P1–P4 theo D50 (§13). Trạng thái chi tiết: `docs/STATUS.md`.
 > **Hợp đồng giao thức giao dịch** (gói tin, nguồn, mức chắc chắn): `GIAO_DICH.md`. Đọc file đó trước khi code.
 
 ---
@@ -69,6 +69,9 @@ có phân quyền, báo qua Telegram.
 **Vòng 7 (sau khi chốt v1):**
 > Dùng 4.5.2 đi.
 
+**Vòng 8:**
+> Nếu làm 1 lượt rồi test có được không? → chọn "1 lượt + test 2 chặng". Bố cục giao diện → chọn A (tab theo việc).
+
 ## 2. Quyết định đã chốt
 
 | # | Quyết định | Nguồn |
@@ -125,6 +128,8 @@ có phân quyền, báo qua Telegram.
 | D40 | **T4:** lời mời bị khoá **31 giây**; nhưng phiên được đồng ý xong thì **mời lại được ngay**. | Mời lại cách **31 giây** (`MoiLaiGiay`). Rút nhiều lượt cho cùng một người thì mời lượt sau ngay khi lượt trước xong. |
 | D41 | **T5:** mời người đang giao dịch → server báo **"đối phương đang có giao dịch khác"**. | Chủ kho **không chen ngang được bằng lời mời** khi Leader đang bận. Phải chen bằng **chat `nap`** (§5, §9.4). Clone mời người nhận đang bận → chờ 31 giây rồi mời lại. |
 | D42 | **T8:** rương là NPC **"Thủ khố"**, phải đứng **sát NPC** mới cất/lấy được. MODGAME: NPC template **5**, đứng cách ≤ **22 px**, rồi mở bằng `-30 {-103, 4}`, **không qua menu NPC** (`MODGAME/src/GameScr.java:14356-14362`, `:13026-13031`). | Cần cất / lấy rương thì **Leader tự đi tới Thủ khố**, xong thì quay về chỗ đứng (D48). Clone dùng Thủ khố ở khu phụ. Không cần gói menu 29. |
+| D50 | **Vòng 8 (user):** làm **một lượt** rồi test | **Code trọn P1–P4 trong một lượt**, kèm **bộ kiểm tra offline** (`tools/kiemtra`) và **công tắc bật/tắt từng tính năng**. Giao test khi build sạch **và** bộ kiểm tra qua hết. **Buổi test 2 chặng** (§13): chặng 1 kiểm phần lõi giao dịch, hỏng thì dừng để sửa lõi; qua rồi mới sang chặng 2. P0b không còn là một đợt riêng: các phép đo của nó nằm trong chặng 1. |
+| D51 | **Vòng 8 (user):** bố cục giao diện **A — tab theo việc** | §10. |
 | D49 | **Vòng 7 (user):** *"Dùng 4.5.2 đi."* | **Dùng trọn .NET Framework 4.5.2.** Được dùng mọi API tới 4.5.2. `App.config` khai `sku=".NETFramework,Version=v4.5.2"` (MINH đề xuất kèm, để thiếu runtime thì **báo ngay lúc mở app** thay vì crash giữa chừng). Thay cho luật "trường hợp xấu nhất: chỉ 4.5 gốc" của v1. Chi tiết ở §3.1. |
 | D48 | **Vòng 6 (user):** *"Leader tôi muốn cài được toạ độ đứng. Nếu không cài thì đứng đâu thì đứng."* | `LeaderX/LeaderY` **mặc định để trống**. **Có cài** → Leader đứng đúng chỗ đó, đi Thủ khố xong thì quay về. **Không cài** → Leader không bị kéo đi đâu; đi Thủ khố xong thì đứng luôn ở đó. |
 | D43 | **T12:** **không bán được gì**; rác thì giao vào một clone, user tự dọn tay. | Thùng rác = **kệ Rác**: dồn rác vào clone thuộc kệ Rác; tool **nhả clone** đó (đăng xuất) để user đăng nhập tay dọn, rồi **nhận lại** (§6.2). |
@@ -480,11 +485,39 @@ Server không cho bán món nào (T12), nên tool **không tự bán, không t�
 | `huy [#số]` | huỷ lệnh của chính mình | `@106 Da huy lenh #12` |
 | `theo <id> [N]` · `botheo <id>` | bật / tắt theo dõi món (D36) | `@110 Theo doi 457: bao khi duoi 50` |
 
-## 10. Giao diện — ⚠ BỐ CỤC PHẢI TRÌNH USER DUYỆT TRƯỚC KHI CODE
+## 10. Giao diện — ✅ BỐ CỤC A ĐÃ DUYỆT (D51)
 
-Đây là luật chung của NSOBAOTATL và NSOLITEPRO. Phần dưới chỉ là danh sách **chức năng** cần có, chưa phải bố cục.
+Luật chung của họ NSO: đổi **bố cục** thì phải trình user duyệt trước. Bố cục dưới đây user đã chọn ngày 2026-09-16. Muốn thêm/bớt tab hay dời khung thì phải trình lại.
 
-- **Lưới acc** (VirtualMode của NSOBAOTATL), thêm các cột:
+```
+[Thêm][H.loạt][Sửa][Xoá] | [▶Chạy][■Dừng][↻Vào lại] | [Nhả clone][Nhận lại] | [Proxy…][Chia proxy…][Danh sách…] | [Ghi log][Ẩn tên]
+┌Tổng kho┬Acc┬Hàng chờ(2)┬Nhật ký┬Cài đặt┐
+│ Tìm:[da cap  ] Kệ:[Tất cả▾]  Kho 70/360 │ ĐIỀU PHỐI          │
+│ ID  Tên        Kệ    +  Tổng Giữ Còn Acc │ Món: 457 Đá cấp 5  │
+│ 457 Đá cấp 5   Chồng 0  120   5  115  3  │ SL:  [ 10 ] [Hết]  │
+│ 458 Đá cấp 6   Chồng 0   33   0   33  1  │ Cho: [Abc       ▾] │
+│ 212 Áo choàng  T.bị +8    1   0    1  1  │ [     Giao     ]   │
+│ ...                                      │ Gói: [dapdo ▾][Rút]│
+├── Log (thu gọn được) ──────────────────────────────────────────┤
+│ 14:02 Leader nhan 12 mon tu Abc                                │
+└ Kho 70/360 │ Xu 1,2 tỷ │ Chờ 2 │ Leader: KhoTong │ 11/11 online ┘
+```
+
+| Tab | Nội dung |
+|---|---|
+| **Tổng kho** (mở app là thấy) | Bảng món bên trái (tìm, lọc kệ, dòng sức chứa). Khung **Điều phối** bên phải: món đang chọn, số lượng, người nhận, *Giao*, chọn gói + *Rút gói*. Chuột phải vào món: *Đánh dấu rác* · *Theo dõi…* · *Đổi kệ cho loại món này* · *Xem phân bố*. |
+| **Acc** | Lưới acc VirtualMode của NSOBAOTATL, thêm cột kho (dưới đây). |
+| **Hàng chờ** | Các lệnh rút; số lệnh chờ hiện trên tên tab. |
+| **Nhật ký** | Đọc từ `Logs/<ngày>/`; lọc theo ngày / acc / đối tác / loại. |
+| **Cài đặt** | Tab con: **Kho** (§4) · **Kệ hàng** · **Gói rút** · **Theo dõi** · **Chat & rao** · **Log**. |
+
+- Khung log dưới cùng thu gọn được. Thanh trạng thái luôn hiện sức chứa, xu, số lệnh chờ, tên Leader, số acc online.
+- **Hai nút *Nhả clone* / *Nhận lại*** nằm trên thanh nút và áp cho các dòng đang chọn ở tab Acc.
+- Giữ các bẫy WinForms đã trả giá bên NSOBAOTATL: `SplitContainer` chỉ đặt kích thước trong `Shown`; `RadioButton` phải có `Panel` bọc riêng.
+
+**Chức năng trong từng tab:**
+
+- **Lưới acc** (tab Acc), thêm các cột:
   - *Vai*: Leader / Dự phòng / Clone; *Kệ*; *Khu*;
   - *Túi trống*, *Rương trống*, *Xu*;
   - *Trạng thái kho*: Sẵn sàng / Đang nhận / Đang giao / Đang dọn / Đang sang khu / Giữ cửa / ĐẦY / **ĐÃ NHẢ** / Offline;
@@ -581,6 +614,28 @@ Có sẵn: ChatService.SendPublicChat (−23), SendPrivateChat (−22); ItemServ
 
 ## 13. Lộ trình
 
+### Cách làm (D50): code một lượt, test một buổi 2 chặng
+
+```
+Code trọn P1–P4 ──► build sạch + tools/kiemtra PASS ──► buổi test:
+     chặng 1: LÕI (P0b gộp vào đây) ──hỏng──► DỪNG, sửa lõi, test lại chặng 1
+                 │ qua
+                 ▼
+     chặng 2: mọi tính năng còn lại theo checklist
+```
+
+- **Các mục P1–P4 bên dưới giờ là danh mục phạm vi và tiêu chí nghiệm thu**, không còn là các đợt giao hàng riêng.
+- **Checklist buổi test** nằm ở `docs/TEST_2CHANG.md`, viết cùng lúc với code.
+- **Chặng 1 — lõi** (khoảng 10–15 phút, đồ rẻ). Mỗi bước thành công phải có dòng tương ứng trong `hex.log` / `giaodich.csv`:
+  1. Người chơi nạp 1 món cho Leader (M1).
+  2. Leader cất món đó vào rương ở Thủ khố (M7b, đọc được số ô rương).
+  3. Lệnh rút 1 món (một phần chồng) → clone tách chồng (M8) → sang khu chính → giao cho người chơi (M2, M9).
+  4. Người chơi thiếu ô → lệnh tạm dừng đúng lý do (M18).
+- **Hỏng ở bất kỳ bước nào của chặng 1 → dừng buổi test.** Gửi MINH thư mục `Logs/<ngày>`.
+- **Chặng 2:** đi hết checklist P1–P4; M5, M10b, M12, M13 đo trong lúc chạy.
+- **Mọi tính năng có công tắc bật/tắt** trong Cài đặt, để khoanh vùng khi có lỗi.
+- **Code chỉ commit sau khi user xác nhận đã test đúng** — luật của họ NSO.
+
 ### P0a — Test tay: ✅ XONG 2026-09-16
 
 Kết quả ở `TEST_TAY.md` và `GIAO_DICH.md` §9. Tóm tắt:
@@ -600,9 +655,9 @@ Kết quả ở `TEST_TAY.md` và `GIAO_DICH.md` §9. Tóm tắt:
 | T12 | ✅ Không bán được gì | D43 |
 | T13 | ✅ Không làm tự mở rộng | D44 |
 
-### P0b — Đo bằng bot (việc tiếp theo)
+### P0b — Đo bằng bot (gộp vào chặng 1 và chặng 2 của buổi test)
 
-Dựng khung project (tách từ NSOBAOTATL `7715bcf`), viết `TradeService` / `TradeHandler`, thêm vài nút bấm tay và ghi hex. Dùng **đồ rẻ**.
+Các phép đo dưới đây không còn là một đợt riêng (D50). Log hex bật sẵn ghi lại đủ dữ liệu cho từng mã.
 
 | Mã | Đo gì | Phục vụ |
 |---|---|---|
@@ -689,10 +744,10 @@ Kết quả ghi vào `GIAO_DICH.md` §9, kèm hex.
 **Không còn câu hỏi mở.** Spec đã chốt (v1.1).
 
 - **Số phiên bản .NET của VPS:** user không có. Chốt dùng trọn 4.5.2 (D49); thiếu runtime thì cài .NET 4.8 (§3.1 luật 3).
-- **P0b:** chờ user ra lệnh. Việc đầu tiên khi bắt đầu:
+- **Cách làm:** một lượt + test 2 chặng (D50); bố cục A (D51). Thứ tự code:
   1. tách khung từ NSOBAOTATL `7715bcf` (kèm `NGUON_GOC.md`);
   2. viết `CLAUDE.md` + `docs/STATUS.md` theo khuôn họ NSO;
-  3. rồi mới viết `TradeService` / `TradeHandler` và các nút đo.
+  3. lõi giao dịch → chat → sổ kho → bộ điều phối → giao diện → bộ kiểm tra offline → `TEST_2CHANG.md`.
 
 **User đã xác nhận (vòng 6):** T13 = bỏ hẳn tự dùng túi vải (D44) · T8 = rương là NPC 5 theo mục "Thủ khố" của MODGAME (D42) · toạ độ Leader cài được, không cài thì tự do (D48).
 
