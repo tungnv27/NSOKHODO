@@ -75,6 +75,7 @@ Bot **headless** giữ khoảng 10 acc clone online 24/7 ở **Làng Tone (map 2
 | D26 | **Log đầy đủ, mỗi ngày một file**, không ghi đè (§8.1). | user |
 | D27 | Câu rao `70/360` nghĩa là **ô đã dùng / tổng ô**. "Chat cộng đồng" là **chat khu** (gói −23), để người cùng khu biết. | user |
 | D28 | **Hồi chiêu đổi khu là 10 giây, tính từ lúc đặt chân tới khu mới.** Clone đứng yên ở khu phụ đủ lâu thì đổi sang khu chính được **ngay**. | user (luật game) |
+| D29 | **Chạy trên Windows Server 2012.** Dùng **C# / .NET Framework 4.5.2 (`net452`) / WinForms**, giống NSOLITEPRO và NSOBAOTATL. Chi tiết ở §3.1. | user (yêu cầu môi trường) + bằng chứng: NSOLITEPRO net452 đã chạy "pass" trên VPS Server 2012 (`NSOLITEPRO/docs/WORKLOG.md:2020-2033`) |
 
 ## 3. Phạm vi
 
@@ -94,6 +95,36 @@ Bot **headless** giữ khoảng 10 acc clone online 24/7 ở **Làng Tone (map 2
 - Clone đi tìm người ở map khác.
 - Chat thế giới.
 - Bản Android, obfuscate.
+
+## 3.1 Công nghệ và môi trường chạy (D29)
+
+| Hạng mục | Chốt | Vì sao |
+|---|---|---|
+| Ngôn ngữ | **C#** | Toàn bộ lõi (~30.000 dòng: protocol, điều hướng, quản lý nhiều acc) đã có sẵn bằng C# |
+| Nền tảng | **.NET Framework 4.5.2** — csproj kiểu SDK, `<TargetFramework>net452</TargetFramework>` | Server 2012 có sẵn .NET 4.5, **không phải cài runtime**. Target net452 còn là **chốt chặn lúc build**: gọi API mới hơn 4.5.2 thì không build được. |
+| `App.config` | `supportedRuntime sku=".NETFramework,Version=v4.5"` + `gcServer enabled="true"` | Máy chỉ có 4.5 gốc vẫn mở được app. Server GC giúp chịu tải nhiều acc (giữ nguyên như NSOBAOTATL). |
+| Giao diện | **WinForms**, tiếng Việt **có dấu** | Dùng qua Remote Desktop trên VPS. Log trong file ghi không dấu (§8.1). |
+| Thư viện ngoài | **Không có.** Không NuGet, không thư viện JSON; dữ liệu ghi dạng pipe-delimited / `key=value` | Chép 1 file exe là chạy; không bị lệch phiên bản DLL trên VPS |
+| Build | `dotnet build NSOKHODO.sln -c Release` **trên máy dev** | VPS chỉ cần file exe, không cần SDK |
+| Triển khai | Chép `NSOKHODO.exe` (map `.bin` + ảnh nhúng sẵn, khoảng 1 MB). Thư mục `Data/` và `Logs/` tự tạo cạnh exe. | Giống NSOBAOTATL: một file, chạy ngay |
+| Đa luồng | `Thread` / `ThreadPool`, hạn chế `async`/`await`; stack 256 KB mỗi luồng | Theo NSOBAOTATL (đo được 1.800 acc chạy trong một tiến trình) |
+
+**Luật code bắt buộc khi chạy Server 2012:**
+1. **Không gọi API mới hơn 4.5.2.** Ví dụ `DateTimeOffset.ToUnixTime*`, `Array.Empty`, `Task.CompletedTask`. Cần Unix-time thì tính tay từ mốc `1970-01-01 UTC`. Bài học: NSOLITEPRO từng crash `Method not found` trên VPS vì đúng lỗi này (`WORKLOG.md:2028`).
+2. **Không dùng cú pháp cần kiểu dữ liệu mà 4.5 không có**: tuple `(a, b)` (cần `System.ValueTuple`), `Span<T>`, `IAsyncEnumerable`… `LangVersion latest` cho phép viết, nhưng thiếu kiểu thì build báo lỗi — chốt chặn vẫn hoạt động.
+3. ⚠ **Kẽ hở nhỏ của chốt chặn:** app khai cần 4.5, nhưng build theo bộ API của 4.5.2. Vài API **chỉ có từ 4.5.1 hoặc 4.5.2** vẫn build được mà sẽ crash trên máy **chỉ có 4.5 gốc**. Hai cách xử lý:
+   - tránh dùng các API đó;
+   - hoặc cài .NET 4.5.2 trở lên trên VPS. Server 2012 hỗ trợ tới 4.8, và thường Windows Update đã tự cài.
+4. **Kiểm tra bản .NET trên VPS** (PowerShell):
+   ```powershell
+   (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full').Release
+   ```
+   Kết quả: `378389` = 4.5 · `379893` = 4.5.2 · `393295` trở lên = 4.6+ · `528040` trở lên = 4.8.
+5. **Không phụ thuộc HTTPS.** Nếu sau này có gọi web (vd báo qua Telegram), .NET 4.5 mặc định chỉ dùng TLS 1.0, phải tự bật TLS 1.2 qua `ServicePointManager`. Hiện bot chỉ dùng TCP thô tới server game nên chưa gặp vấn đề này.
+
+**Không chọn .NET mới hơn (6/8)** vì phải port toàn bộ lõi, exe tự chứa runtime nặng hơn nhiều, và mất lợi thế "chép 1 file là chạy" đã được kiểm chứng trên chính VPS này.
+
+**Rủi ro môi trường (ngoài phạm vi tool):** Windows Server 2012 đã **hết hỗ trợ bảo mật từ 10/2023**. Nếu VPS mở Remote Desktop ra Internet thì nên đổi port, đặt mật khẩu mạnh, hoặc giới hạn IP được truy cập.
 
 ## 4. Vai trò, bố trí, cài đặt
 
