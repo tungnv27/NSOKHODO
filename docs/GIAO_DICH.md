@@ -1,6 +1,6 @@
 # Giao dịch giữa hai người chơi — hợp đồng giao thức
 
-> **Tra cứu ngày 2026-09-16, CHƯA đo trên server chính.** Mọi dòng "phải đo" nằm ở §9.
+> **Tra cứu ngày 2026-09-16.** Đã có **test tay** trên server chính (§5.1, §9). **Chưa đo bằng bot** (P0b). Kết quả đo nằm ở §9.
 > Sửa file này **tại chỗ** khi có kết quả đo mới, kèm hex.
 
 ## 0. Nguồn và nhãn
@@ -30,6 +30,7 @@ SERVER_FACTS (đo hex) → NINJAPC 251 → MODGAME 180 → NSOTRUNGDUC 217 / NSO
 | **[CHẠY]** | đã chạy thật trên server chính |
 | **[SUY]** | suy luận |
 | **[CHƯA ĐO]** | chưa kiểm chứng |
+| **[TAY]** | user test tay trên server chính bằng client thường (2026-09-16, `TEST_TAY.md`) |
 
 ## 1. Kết luận
 
@@ -38,6 +39,12 @@ SERVER_FACTS (đo hex) → NINJAPC 251 → MODGAME 180 → NSOTRUNGDUC 217 / NSO
 - **Tối đa 12 ô mỗi lượt.** Mỗi ô đi **nguyên chồng**; muốn giao một phần chồng thì tách trước (§6).
 - **Chỉ chuyển được xu.** Không có trường nào cho yên hay lượng.
 - Chuỗi gói này đã chạy thật trên server chính qua mod Giao/Nhận đồ của NSOTRUNGDUC (user xác nhận 2026-06-23) [CHẠY — trên client 217, **không** phải trên bot C#].
+- **Test tay 2026-09-16** [TAY] xác nhận các điểm cho phép làm kho:
+  - giao dịch **không khoá** món;
+  - bên nhận thiếu ô thì server tự huỷ phiên, **không mất đồ**;
+  - cấp 1 giao dịch được;
+  - đồ có hạn giao được.
+  Chi tiết ở §5.1.
 
 ## 2. Mã lệnh
 
@@ -145,6 +152,25 @@ Nguồn: `217` [BC]; khớp `251` [CODE]. Thứ tự "8/9 trước 58" là [SUY]
 | Cấp độ | **Client không kiểm tra** | — |
 | Timeout phiên | **Client không có** | — |
 
+### 5.1 Luật phía server chính — đo bằng test tay [TAY]
+
+| Luật | Kết quả | Test |
+|---|---|---|
+| Giao dịch có khoá món không | **Không.** Món chỉ bị khoá khi **đem ra dùng** | T0 |
+| Bên giao khoá vượt số ô trống của bên nhận | **Server đóng phiên ngay**, không mất đồ. Lúc có lúc không hiện popup kiểu "đối phương không đủ hành trang" | T3 |
+| Món có hạn sử dụng | Giao được | T2 |
+| Cấp tối thiểu | Cấp 1 giao dịch được | T1 |
+| Mời liên tục | Lời mời khoá **31 giây**. Phiên được đồng ý xong thì **mời lại được ngay** | T4 |
+| Mời người đang giao dịch | Server báo **"đối phương đang có giao dịch khác"** | T5 |
+| Một bên rời khu / thoát trong lúc đã khoá | Phiên tự huỷ, đồ còn nguyên | T6 |
+| Giao dịch một chiều (một bên khoá rỗng) | Được | T7 |
+| Trần xu mỗi nhân vật | **2 tỷ** | T14 |
+| Chat riêng tới acc chưa kết bạn | Nhận được, nhưng **phải gửi không dấu** | T10 |
+| Chat khu 5 giây/lần có tem `@NNN` ở đầu | Không bị chặn (thử 3 phút) | T11 |
+| Bán đồ cho NPC | **Không bán được gì** | T12 |
+
+Câu chữ chính xác của các thông báo trên **chưa có** — bot gom ở P0b (M18).
+
 - **Mốc 5 giây có bị server ép không?** 217 `Class_ap` gửi 46 sau 1,5 s, mod Giao/Nhận gửi sau 1,2 s, và đều chạy OK. ⇒ [SUY] server không ép chặt mốc này. Cần đo lại (M9).
 - **Chuỗi thông báo (nguyên văn, `251\mResources.cs`):**
   - `INVITETRADE` "mời bạn giao dịch. Bạn có muốn giao dịch không?"
@@ -170,10 +196,12 @@ Nguồn: `217` [BC]; khớp `251` [CODE]. Thứ tự "8/9 trước 58" là [SUY]
 
 **Lưu ý:**
 - **NPC mở rương là template 5.** Nguồn: mod 180 `AutoDanhVong.java:990-996` và `LITE\Auto\DanhVong\DanhVongConst.cs:46`.
-- ⚠ **Gói menu 29 dài khác nhau giữa hai bản:**
-  - 180: `byte npc, byte menu, byte option` (3 byte).
-  - 251: `byte typeClose, byte npc, byte menu, byte option` (4 byte).
-  - Bot khai `"1.8.0"`, gần dòng 180. **Phải đo (M7).**
+- ✅ **Mở rương KHÔNG cần menu NPC** (tra 2026-09-16 theo gợi ý T8 của user): mục menu "Thủ khố" của MODGAME (`GameScr.java:14356-14362`) làm đúng ba việc:
+  1. tìm NPC template **5**;
+  2. cách quá **22 px** theo trục ngang hoặc dọc thì đi tới sát NPC;
+  3. gọi `d(4)`, tức `requestItem(4)` = `-30 {-103, 4}`, và chỉ gửi khi chưa có danh sách rương (`GameScr.java:13026-13031`).
+- User xác nhận **đứng xa thì không cất được, phải sát NPC** [TAY]. ⇒ Bot đứng sát NPC 5 rồi gửi `-30 {-103, 4}` + 16/17.
+- Vì không đi qua menu, **không còn phải lo** gói menu 29 dài khác nhau giữa hai bản (180: 3 byte; 251: 4 byte).
 - **Số ô rương** do server gửi trong gói 31; client không ghi cứng con số nào.
 - **Rương theo từng nhân vật**, không chia sẻ giữa các tài khoản [SUY].
 - **Tách chồng:** NSOCHIP Auto Sell chỉ gửi −85; còn `LITE` gửi hai bước theo 251. Chọn cách nào thì **đo M8** rồi quyết.
@@ -230,36 +258,36 @@ Mẫu gần nhất cho **auto mua bán** (giai đoạn P5).
 | Kênh | Lý do loại |
 |---|---|
 | Vứt rồi nhặt | Gói có món nằm trên map **không có trường chủ sở hữu** (`251\ItemMap.cs`); người khác nhặt được. Server có câu "Vật phẩm của người khác", nhưng bảo hộ cho **đồ vứt** thì không ai biết. Client chặn vứt đồ khoá. |
+| Bán cho NPC (gói 14) | Server chính **không bán được gì** [TAY, T12]. |
 | Gian hàng (102–105) | Chặn cả đồ khoá **lẫn** đồ có hạn; phí 5.000 xu mỗi lần bán + thuế 5% (`mResources.cs:1803`, `:1815`). Chỉ hợp để chuyển xu, không hợp làm kho. |
 | Kho gia tộc | Thành viên **không gửi đồ vào được**; chỉ "phát" ra cho thành viên (`-28 {-61}`). |
 | Thư / quà | Không tồn tại trong client 251. |
 | Gói 126 | Nộp đồ cho NPC/sự kiện, không có người nhận. |
 
-## 9. Chưa biết — phải đo trên server chính
+## 9. Kết quả đo trên server chính
 
-Kế hoạch đo chi tiết: `SPEC.md` §13 P0 (M1–M12). Ghi kết quả **vào bảng này**, kèm hex.
+Kế hoạch đo: `SPEC.md` §13 (P0a test tay — ✅ xong 2026-09-16; P0b đo bằng bot — chưa làm). Kết quả P0b ghi **vào bảng này**, kèm hex.
 
 | Mã | Câu hỏi | Kết quả |
 |---|---|---|
-| M1 | Khuôn gói 37/45/46/58/8/9 với `clientType 1 / "1.8.0"` | — |
-| M2 | Server có gửi gói xoá ô cho bên giao không | — |
-| M3 | Đồ có hạn dùng giao dịch được không | — |
-| M4 | Bên nhận thiếu ô → server huỷ phiên hay mất đồ | — |
-| M5 | Khoảng cách tối đa để mời | — |
-| M6 | Mời liên tục có bị chặn không; phải chờ bao lâu | — |
-| M7 | Rương ở map 22: có NPC 5 không, gói 29 dài 3 hay 4 byte, số ô, có cần đứng gần NPC không | — |
-| M8 | Tách chồng: một bước (−85) hay hai bước (22 + −85) | — |
-| M9 | Gửi 46 sau 1,5 s có bị server từ chối không | — |
-| M10 | Chat riêng: độ dài tối đa, có cần kết bạn không, ngưỡng khoá chat | — |
-| M11 | Cấp độ tối thiểu để giao dịch | — |
-| M12 | Khoảng 12 acc trong một khu có bị đẩy sang khu khác không | — |
-| M13 | Tự đánh (gói 61, charId của mình) ở làng: server phản hồi gì; đứng 2 giờ có rớt không | — |
-| M14 | Chat cộng đồng (−23) 5 s/lần trong 1 giờ: có bị chặn hoặc khoá không | — |
-| M15 | Đổi khu ở map 22: có NPC 13 không, thời gian chờ thực tế | — |
-| M16 | Trần xu mỗi nhân vật; nhận xu vượt trần thì sao | — |
-| **M17** | **Món nhận qua giao dịch có bị chuyển thành KHOÁ không** (sống còn — `TEST_TAY.md` T0) | — |
-
-Cột "Kết quả" của M3, M4, M6, M7, M10, M11, M14, M15, M16, M17 lấy từ test tay (`TEST_TAY.md`). Các mã còn lại đo bằng bot.
+| M1 | Khuôn gói 37/45/46/58/8/9 với `clientType 1 / "1.8.0"` | — (P0b) |
+| M2 | Server có gửi gói xoá ô cho bên giao không | — (P0b) |
+| M3 | Đồ có hạn dùng giao dịch được không | ✅ **Được** [TAY, T2] |
+| M4 | Bên nhận thiếu ô → server huỷ phiên hay mất đồ | ✅ **Server đóng phiên ngay** khi bên giao khoá vượt số ô trống; **không mất đồ**; popup "không đủ hành trang" lúc có lúc không [TAY, T3] |
+| M5 | Khoảng cách tối đa để mời | — (P0b) |
+| M6 | Mời liên tục có bị chặn không; phải chờ bao lâu | ✅ Khoá **31 s**; phiên xong thì mời lại được **ngay**; người đang giao dịch → "đối phương đang có giao dịch khác" [TAY, T4, T5] |
+| M7 | Rương ở map 22: NPC, số ô, có cần đứng gần NPC không | ◐ NPC **Thủ khố** (= NPC 5 theo MODGAME), **phải đứng sát**; mở không cần menu (§6) [TAY, T8]. **Số ô: chưa có** → M7b (P0b) |
+| M8 | Tách chồng: một bước (−85) hay hai bước (22 + −85) | — (P0b) |
+| M9 | Gửi 46 sau 1,5 s có bị server từ chối không | — (P0b) |
+| M10 | Chat riêng: độ dài tối đa, có cần kết bạn không, ngưỡng khoá chat | ◐ **Không cần kết bạn**; **phải gửi không dấu** [TAY, T10]. **Độ dài tối đa: chưa có** → M10b (P0b) |
+| M11 | Cấp độ tối thiểu để giao dịch | ✅ **Cấp 1 giao dịch được** [TAY, T1] |
+| M12 | Khoảng 12 acc trong một khu có bị đẩy sang khu khác không | — (P0b) |
+| M13 | Tự đánh (gói 61, charId của mình) ở làng: server phản hồi gì; đứng 2 giờ có rớt không | — (P0b) |
+| M14 | Chat cộng đồng (−23) 5 s/lần: có bị chặn hoặc khoá không | ◐ Có tem `@NNN` thì **không bị** (thử 3 phút) [TAY, T11]. Chưa thử dài |
+| M15 | Đổi khu ở map 22: có NPC 13 không | ✅ **Có NPC 13** [TAY, T9]. Hồi chiêu 10 s đếm từ lúc tới khu mới (user) |
+| M16 | Trần xu mỗi nhân vật | ✅ **2 tỷ** [TAY, T14]. Nhận vượt trần thì sao: chưa thử (bot kiểm trước để không bao giờ vượt) |
+| **M17** | **Món nhận qua giao dịch có bị chuyển thành KHOÁ không** | ✅ **Không** — món chỉ khoá khi **đem ra dùng** [TAY, T0] |
+| M18 | Nguyên văn các câu server báo (không đủ hành trang, đang có giao dịch khác, mời liên tục) | — (P0b, lấy từ gói −24/−25/−26/53) |
 
 ## 10. Sai sót tài liệu đã phát hiện (chưa sửa ở nguồn)
 
