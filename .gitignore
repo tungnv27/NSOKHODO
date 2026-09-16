@@ -1,0 +1,19 @@
+# Build
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# DU LIEU CHAY - TUYET DOI KHONG COMMIT
+# accounts.txt chua username/password that (da ma hoa nhung van la bi mat cua user).
+# Data/ chua so kho, cai dat kho, danh sach Chu kho.
+Data/
+**/Data/
+accounts.txt
+*.accounts.txt
+
+# Log theo ngay (SPEC 8.1): co noi dung chat, ten nhan vat, hex goi tin
+Logs/
+**/Logs/
+*.log
