@@ -1,8 +1,9 @@
 # NSOKHODO — Kho đồ chung cho Ninja School Online
 
-> **Trạng thái:** SPEC — ý tưởng chốt với user ngày **2026-09-16** (6 vòng). **CHƯA CODE.**
+> **Trạng thái: ✅ ĐÃ CHỐT — SPEC v1 (2026-09-16, 6 vòng với user). CHƯA CODE.**
+> Sửa spec sau mốc này thì ghi thêm một vòng ở §1 và một dòng quyết định ở §2, **không sửa ngầm**.
 > **Test tay (P0a) XONG:** T0 cho thấy **giao dịch KHÔNG khoá đồ** → thiết kế đi tiếp. Kết quả đầy đủ: `TEST_TAY.md`.
-> **Việc tiếp theo:** P0b — dựng khung project và đo những gì tay không đo được (§13).
+> **Việc tiếp theo:** P0b — dựng khung project và đo những gì tay không đo được (§13). **Chỉ bắt đầu khi user ra lệnh.**
 > **Hợp đồng giao thức giao dịch** (gói tin, nguồn, mức chắc chắn): `GIAO_DICH.md`. Đọc file đó trước khi code.
 
 ---
@@ -166,10 +167,11 @@ có phân quyền, báo qua Telegram.
 **Luật code bắt buộc khi chạy Server 2012:**
 1. **Không gọi API mới hơn 4.5.2.** Ví dụ `DateTimeOffset.ToUnixTime*`, `Array.Empty`, `Task.CompletedTask`. Cần Unix-time thì tính tay từ mốc `1970-01-01 UTC`. Bài học: NSOLITEPRO từng crash `Method not found` trên VPS vì đúng lỗi này (`WORKLOG.md:2028`).
 2. **Không dùng cú pháp cần kiểu dữ liệu mà 4.5 không có**: tuple `(a, b)` (cần `System.ValueTuple`), `Span<T>`, `IAsyncEnumerable`… `LangVersion latest` cho phép viết, nhưng thiếu kiểu thì build báo lỗi — chốt chặn vẫn hoạt động.
-3. ⚠ **Kẽ hở nhỏ của chốt chặn:** app khai cần 4.5, nhưng build theo bộ API của 4.5.2. Vài API **chỉ có từ 4.5.1 hoặc 4.5.2** vẫn build được mà sẽ crash trên máy **chỉ có 4.5 gốc**. Hai cách xử lý:
-   - tránh dùng các API đó;
-   - hoặc cài .NET 4.5.2 trở lên trên VPS. Server 2012 hỗ trợ tới 4.8, và thường Windows Update đã tự cài.
-4. **Kiểm tra bản .NET trên VPS** (PowerShell):
+3. ⚠ **Không dùng API chỉ có từ 4.5.1 / 4.5.2.** App khai cần 4.5, nhưng build theo bộ API của 4.5.2, nên các API đó **vẫn build được** mà sẽ crash trên máy **chỉ có 4.5 gốc**.
+   - **Chốt 2026-09-16:** user **không có** số phiên bản .NET của VPS → code theo **trường hợp xấu nhất: VPS chỉ có 4.5 gốc**. Luật này là **bắt buộc**, không phải khuyến nghị.
+   - Chạy được thì đã chắc: NSOLITEPRO cùng cấu hình đã "pass" trên chính VPS này.
+   - Khi review code, API nào lạ thì tra tài liệu Microsoft xem có từ phiên bản nào.
+4. **Kiểm tra bản .NET trên VPS** (khi nào có dịp, không bắt buộc) (PowerShell):
    ```powershell
    (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full').Release
    ```
@@ -679,9 +681,13 @@ Kết quả ghi vào `GIAO_DICH.md` §9, kèm hex.
 
 ## 15. Câu hỏi còn mở
 
-**Đang chờ user:**
-1. Số `Release` của .NET trên VPS (§3.1 luật 4).
-2. Đồng ý bắt đầu **P0b** (dựng khung + đo bằng bot) chưa.
+**Không còn câu hỏi mở.** Spec đã chốt (v1).
+
+- **Số phiên bản .NET của VPS:** user không có → code theo trường hợp xấu nhất (§3.1 luật 3).
+- **P0b:** chờ user ra lệnh. Việc đầu tiên khi bắt đầu:
+  1. tách khung từ NSOBAOTATL `7715bcf` (kèm `NGUON_GOC.md`);
+  2. viết `CLAUDE.md` + `docs/STATUS.md` theo khuôn họ NSO;
+  3. rồi mới viết `TradeService` / `TradeHandler` và các nút đo.
 
 **User đã xác nhận (vòng 6):** T13 = bỏ hẳn tự dùng túi vải (D44) · T8 = rương là NPC 5 theo mục "Thủ khố" của MODGAME (D42) · toạ độ Leader cài được, không cài thì tự do (D48).
 
