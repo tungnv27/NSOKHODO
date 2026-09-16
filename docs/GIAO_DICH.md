@@ -257,6 +257,9 @@ Kế hoạch đo chi tiết: `SPEC.md` §13 P0 (M1–M12). Ghi kết quả **và
 | M14 | Chat cộng đồng (−23) 5 s/lần trong 1 giờ: có bị chặn hoặc khoá không | — |
 | M15 | Đổi khu ở map 22: có NPC 13 không, thời gian chờ thực tế | — |
 | M16 | Trần xu mỗi nhân vật; nhận xu vượt trần thì sao | — |
+| **M17** | **Món nhận qua giao dịch có bị chuyển thành KHOÁ không** (sống còn — `TEST_TAY.md` T0) | — |
+
+Cột "Kết quả" của M3, M4, M6, M7, M10, M11, M14, M15, M16, M17 lấy từ test tay (`TEST_TAY.md`). Các mã còn lại đo bằng bot.
 
 ## 10. Sai sót tài liệu đã phát hiện (chưa sửa ở nguồn)
 

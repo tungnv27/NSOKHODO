@@ -1,6 +1,7 @@
 # NSOKHODO — Kho đồ chung cho Ninja School Online
 
-> **Trạng thái:** SPEC — ý tưởng chốt với user ngày **2026-09-16** (3 vòng). **CHƯA CODE.**
+> **Trạng thái:** SPEC — ý tưởng chốt với user ngày **2026-09-16** (4 vòng). **CHƯA CODE.**
+> **Việc đầu tiên:** test tay theo `TEST_TAY.md` (P0a). Riêng **T0 — đồ có bị khoá sau giao dịch không** quyết định cả thiết kế.
 > **Hợp đồng giao thức giao dịch** (gói tin, nguồn, mức chắc chắn): `GIAO_DICH.md`. Đọc file đó trước khi code.
 
 ---
@@ -43,6 +44,12 @@ Bot **headless** giữ khoảng 10 acc clone online 24/7 ở **Làng Tone (map 2
 > cộng đồng để người cùng khu biết. Mặc định bot chỉ giao tiếp với chủ, có thể nhiều chủ. Còn giao
 > cho ai thì tùy chủ quyết định, trên tool hoặc qua bot. Log đầy đủ theo ngày.
 
+**Vòng 4 (MINH đề xuất 11 ý tưởng, user chọn nhóm A + B + C):**
+test tay trước khi code · rao thông minh · kệ hàng theo loại · thùng rác tự dọn · giữ chỗ khi nhận
+lệnh · gói rút · theo dõi món + báo cáo ngày · tự dùng túi vải.
+**Không chọn (nhóm D, đừng đề xuất lại nếu user chưa hỏi):** nhiều kho trên một máy, kho bang hội
+có phân quyền, báo qua Telegram.
+
 ## 2. Quyết định đã chốt
 
 | # | Quyết định | Nguồn |
@@ -65,7 +72,7 @@ Bot **headless** giữ khoảng 10 acc clone online 24/7 ở **Làng Tone (map 2
 | D16 | **Chế độ nhận** chỉnh được trên tool: **Chỉ Chủ kho** hoặc **Tất cả mọi người** được nạp đồ vào Leader. **Mặc định: Tất cả.** | user — giữ nguyên sau khi đã được cảnh báo rủi ro §14 mục 8 |
 | D17 | **Xem kho và rút đồ qua tin nhắn: chỉ Chủ kho** (danh sách cài trên tool). Người ngoài không được, kể cả khi đang bật chế độ Tất cả. | user |
 | D18 | **Tin gửi cho người chơi khác, riêng hay cộng đồng, luôn bắt đầu bằng `@NNN`** (000–999). | user. Server chính khoá chat khi nội dung lặp lại (`NSOLITEPRO/docs/features/BAO_TA_TL.md`). |
-| D19 | **Leader tự rao ở chat cộng đồng 5 giây một lần**, nội dung tự đặt, báo tình trạng kho. **Chỉ Leader rao.** | user |
+| D19 | **Leader tự rao ở chat cộng đồng 5 giây một lần**, nội dung tự đặt, báo tình trạng kho. **Chỉ Leader rao.** | user. Vòng 4 thêm điều kiện "rao thông minh" làm mặc định (D31); rao đều 5 giây vẫn chọn được. |
 | D20 | **Leader báo sự kiện qua chat riêng VÀ chat cộng đồng.** | user |
 | D21 | **Tool điều phối được:** giao món gì, bao nhiêu, cho ai; xem trạng thái từng acc và từng phiên. | user |
 | D22 | **Chỉ giao dịch món không khoá. Món bị gộp chồng mà chỉ lấy một phần thì tách ra trước.** | user + client gốc |
@@ -95,6 +102,19 @@ Bot **headless** giữ khoảng 10 acc clone online 24/7 ở **Làng Tone (map 2
 - Clone đi tìm người ở map khác.
 - Chat thế giới.
 - Bản Android, obfuscate.
+
+### Quyết định vòng 4 (ý tưởng MINH, user chọn)
+
+| # | Quyết định | Chi tiết |
+|---|---|---|
+| D30 | **Test tay trước khi code** | `TEST_TAY.md` (P0a). Bot chỉ đo những gì tay không đo được (P0b). |
+| D31 | **Rao thông minh** là mặc định; rao đều 5 giây vẫn chọn được | §9.2. Rao đều 24/7 là 17.280 tin/ngày, dễ bị báo spam. |
+| D32 | **Kệ hàng theo loại**: mỗi clone giữ một nhóm món | §6.1 |
+| D33 | **Thùng rác tự dọn**: món do user đánh dấu rác được bán NPC hoặc vứt khi kho đầy quá ngưỡng | §6.2 |
+| D34 | **Giữ chỗ khi nhận lệnh**: món đã hứa cho lệnh này thì lệnh khác không lấy được | §7, §8 |
+| D35 | **Gói rút**: danh sách món định sẵn, rút một lần | §7, §9.4 |
+| D36 | **Theo dõi món + báo cáo ngày** | §9.3, §9.4 |
+| D37 | **Tự dùng túi vải** để nới túi clone | §6.3 |
 
 ## 3.1 Công nghệ và môi trường chạy (D29)
 
@@ -152,7 +172,17 @@ Bot **headless** giữ khoảng 10 acc clone online 24/7 ở **Làng Tone (map 2
 | `ChoNguoiLa` | 45 s | Như trên, cho người ngoài danh sách Chủ kho (khi đang ở chế độ `TatCa`). |
 | `ChoBot` | 20 s | Như trên, khi đối phương là bot. Theo NSOCHIP Auto Sell. |
 | `ChoCoMat` | 10 phút | Lệnh rút chờ người nhận có mặt ở khu chính tối đa bao lâu. |
-| `RaoBat`, `RaoNhipGiay`, `RaoMau` | bật · 5 · `Kho do {dung}/{tong}` | §9.2 |
+| `RaoBat`, `RaoMau` | bật · `Kho do {dung}/{tong}` | §9.2 |
+| `RaoCheDo` | **ThongMinh** | `ThongMinh` \| `Deu` (D31) |
+| `RaoNhipGiay` | 5 | Nhịp khi có người ngoài trong khu hoặc số liệu vừa đổi; cũng là nhịp của chế độ `Deu` |
+| `RaoVangGiay` | 300 | Nhịp khi khu vắng và số liệu không đổi (chỉ dùng cho `ThongMinh`) |
+| `KeHang` | tự đoán | Bảng clone → nhóm món (§6.1) |
+| `RacDanhSach` | rỗng | Template id do user đánh dấu là rác (§6.2) |
+| `RacNguong`, `RacCach` | 80 % · `Ban` | Kho đầy quá ngưỡng thì dọn rác; `Ban` (bán NPC) \| `Vut` |
+| `GoiRut` | rỗng | Tên gói → danh sách (id, số lượng) (§7) |
+| `TheoDoi` | rỗng | id → ngưỡng báo (§9.3) |
+| `BaoCaoGio` | tắt | Giờ gửi báo cáo ngày, ví dụ `22:00` (§9.3) |
+| `TuDungTuiVai` | tắt | Tự dùng món mở rộng túi (§6.3) |
 | `BaoCongDong` | bật | Sao sự kiện sang chat cộng đồng (D20). |
 | `LogFile` | **bật** | Log đầy đủ theo ngày (§8.1). |
 | `GiuLogNgay` | 0 | Số ngày giữ log; 0 = giữ hết. |
@@ -201,7 +231,11 @@ Túi Clone ──(về khu phụ; 17 khi ô trống < NguongNhan)──► Rươ
 1. **Bước nhanh:** túi Leader có món → cất hết vào rương Leader.
 2. **Bước nền:** rương Leader còn món → gọi **một** clone sang khu chính → Leader lấy ≤12 món ra túi → giao dịch sang clone → lặp lại tới khi clone gần đầy hoặc rương Leader hết → clone về khu phụ và tự cất rương.
    - Mỗi lượt Leader chỉ lấy ra tối đa 12 món, nên túi Leader luôn còn ít nhất `(số ô túi − 12)` ô cho người chơi.
-3. **Chọn clone nhận:** ưu tiên clone **đang giữ cùng loại món có thể chồng**, sau đó tới clone **nhiều ô trống nhất** (túi + rương). Clone phải online và rảnh.
+3. **Chọn clone nhận** (clone phải online, rảnh, và đã hết hồi chiêu đổi khu), theo thứ tự:
+   1. clone thuộc **kệ của nhóm món** đó mà **đang giữ cùng loại món có thể chồng** (§6.1);
+   2. clone thuộc kệ đó có **nhiều ô trống nhất** (túi + rương);
+   3. **kệ đó đầy** → clone thuộc kệ "Khác" → nếu cũng đầy thì clone bất kỳ còn chỗ, và ghi log `KE_TRAN` để user biết cần thêm clone cho kệ đó.
+   - Một lượt dọn chỉ gồm món **cùng một kệ**, để cả lượt đi vào một clone.
 4. **Mỗi lúc chỉ 1 clone được gọi sang khu chính để dọn**, cho khu chính đỡ rối.
 5. **Hết chỗ:** mọi clone đều đầy → trạng thái **KHO ĐẦY**. Từ chối nạp và báo (§9.3).
 6. **Xu:** Leader giữ xu nhận được. Chưa dồn xu sang clone; trần xu mỗi nhân vật chưa biết (M16).
@@ -212,6 +246,41 @@ Túi Clone ──(về khu phụ; 17 khi ô trống < NguongNhan)──► Rươ
 - sức chứa chỉ còn bằng số ô túi;
 - ngưỡng ở N1 là cơ chế duy nhất chặn người chơi nạp quá nhanh.
 
+### 6.1 Kệ hàng theo loại (D32)
+
+- **Mỗi clone thuộc một kệ.** Kệ mặc định:
+
+| Kệ | Nhận món nào | Cách đoán mặc định |
+|---|---|---|
+| Trang bị | đồ mặc, vũ khí | `ItemTemplate.Type` 0–15 (`IsTypeBody`) |
+| Thú cưỡi & ngọc | thú cưỡi, ngọc khảm | `Type` 29–33 (`IsTypeMount`), 34 (`IsTypeNgocKham`) |
+| Có thể chồng | đá, bình, nguyên liệu… | template xếp chồng được |
+| Rác | món trong `RacDanhSach` | user đánh dấu |
+| Khác | mọi thứ còn lại, và là chỗ tràn khi kệ khác đầy | — |
+
+- **User đổi được** trên tool: kệ của từng clone, nhóm của từng template, thêm hoặc bớt kệ.
+- Luật đoán theo `Type` ngoài ba khoảng đã biết (0–15, 29–33, 34) **chưa có nguồn**. Chỉ khi thấy template thật trong kho mới chốt thêm; đừng đoán.
+- **Lợi ích:** rút một món thường chỉ cần **một clone**; đồ cùng loại dồn về một chỗ nên cộng dồn được, **tốn ít ô hơn**.
+
+### 6.2 Thùng rác tự dọn (D33)
+
+- **Chỉ đụng vào món có trong `RacDanhSach`**, do user đánh dấu trên tool. **Tool không tự đoán món nào là rác.**
+- **Khi nào chạy:** `{dung}/{tong}` vượt `RacNguong` (mặc định 80 %), **hoặc** user bấm "Dọn rác ngay".
+- **Cách dọn** theo `RacCach`:
+  - `Ban` (mặc định): clone giữ rác đi tới NPC Tạp hoá (template 4) và bán bằng gói 14. Code bán đã có trong Lọc đồ của NSOLITEPRO. Yên bán được cộng vào tổng kho.
+  - `Vut`: vứt bằng gói −12.
+  - Món **không bán được** thì chuyển sang vứt, nếu user cho phép.
+- **Không bao giờ dọn** món có cấp + > 0, món khoá, hay món đang được giữ chỗ cho một lệnh rút.
+- **Mỗi món bị dọn đều ghi `giaodich.csv`** với vai `DON_RAC`: món, số lượng, yên thu được.
+- **Phải test trước (T12):** Làng Tone có NPC Tạp hoá không. Không có thì chỉ còn cách `Vut`.
+
+### 6.3 Tự dùng túi vải (D37, mặc định TẮT)
+
+- **Kho nhận món mở rộng túi** → giao cho **clone gần đầy nhất mà dùng được** → clone dùng món. Server trả sub −91 `{ubyte sốÔMới, ubyte ôXoá}`, và handler này đã có trong lõi.
+- **Nhận diện món:** theo **tên món do server gửi** (`ItemTemplateStore`), user xác nhận danh sách trên tool. **Chưa có nguồn hợp lệ cho mã template** của các món này (T13).
+- **Điều kiện dùng** (cấp, thứ tự túi, trần số ô) **chưa biết** → test tay T13 trước, rồi mới bật.
+- **Chỉ dùng khi dùng được thật:** server từ chối thì ghi log, trả món về kệ "Khác", và không thử lại món đó với clone đó.
+
 ## 7. Luồng RÚT (clone → người nhận)
 
 **Nguồn lệnh** — Chủ kho quyết định giao cho ai (D25):
@@ -221,8 +290,8 @@ Túi Clone ──(về khu phụ; 17 khi ô trống < NguongNhan)──► Rươ
 
 | Bước | Việc |
 |---|---|
-| R1 | **Nhận lệnh** `(templateId, [cấp +], số lượng hoặc "hết", người nhận)` → vào hàng chờ, cấp số lệnh `#N`. |
-| R2 | **Lập kế hoạch:** đọc sổ kho, chọn theo thứ tự ít clone nhất → ít lượt nhất → món trong túi trước món trong rương. Mỗi lượt ≤12 ô. Lấy một phần chồng thì đánh dấu cần tách. |
+| R1 | **Nhận lệnh** `(templateId, [cấp +], số lượng hoặc "hết", người nhận)` → vào hàng chờ, cấp số lệnh `#N`. **Gói rút** (D35) được bung ra thành nhiều dòng món trong **cùng một lệnh**. Kho thiếu món nào thì báo rõ món đó và hỏi lại: giao phần đang có, hay huỷ cả gói. |
+| R2 | **Lập kế hoạch + GIỮ CHỖ** (D34): đọc sổ kho, **chỉ tính phần khả dụng** (tổng − đã giữ cho lệnh khác). Chọn theo thứ tự ít clone nhất → ít lượt nhất → món trong túi trước món trong rương. Mỗi lượt ≤12 ô. Lấy một phần chồng thì đánh dấu cần tách. **Giữ chỗ ngay** các món đã chọn (clone, vị trí, số lượng). Không đủ khả dụng → báo *"chỉ còn K (L đang giữ cho lệnh khác)"*. |
 | R3 | **Chuẩn bị ngay tại khu phụ:** món trong rương → lấy ra (16). Lấy một phần chồng → tách (cmd 22 rồi −28/−85), sau đó so túi trước/sau để tìm ô chứa phần tách. |
 | R4 | **Chờ người nhận có mặt ở khu chính.** Leader thấy người đó trong `OtherPlayers`. Chưa có → báo Chủ kho ra lệnh: *"Lệnh #12: 5 × <tên> cho <người nhận>. Tới Làng Tone khu K để nhận."* Quá `ChoCoMat` → huỷ lệnh và báo. |
 | R5 | Clone **sang khu chính** bằng một lệnh đổi khu. Clone đã đứng ở khu phụ quá 10 giây thì đổi được **ngay** (D28). Sau đó báo *"<tên clone> sẽ mời <người nhận>"* → đi sát người nhận: \|dx\| ≤ 40, \|dy\| ≤ 30 (dưới ngưỡng client 60/40). |
@@ -234,6 +303,9 @@ Túi Clone ──(về khu phụ; 17 khi ô trống < NguongNhan)──► Rươ
 | R11 | Nhận **57** trước khi xong: tính là một lần hỏng. **Hỏng 2 lần liên tiếp** → tạm dừng lệnh và báo. |
 | R12 | Xong → clone về khu phụ. Lúc này đã qua hơn 10 giây kể từ khi tới khu chính, vì một phiên giao dịch luôn dài hơn thế. Leader báo *"Xong lệnh #12: đã giao 5 × <tên> cho <người nhận>"*. Món đã lấy ra khỏi rương mà chưa giao được thì clone tự cất lại. |
 
+- **Nhả giữ chỗ khi:** giao xong phần đó · lệnh bị huỷ hoặc quá hạn · clone giữ món bị offline quá 5 phút (lập lại kế hoạch với clone khác).
+- **Giữ chỗ phải khớp với thực tế:** sau mỗi sub 115 (server gửi lại túi), đối chiếu món đang giữ với túi thật. Món đã biến mất → nhả chỗ giữ, lập lại kế hoạch, ghi log `GIU_CHO_LECH`.
+- **Cùng một người nhận có nhiều lệnh** → gộp chung vào các lượt 12 ô để bớt số phiên giao dịch.
 - **Mỗi lúc chỉ một clone giao cho một người nhận.** Khu chính chỉ có Leader, người nhận và tối đa một clone đang giao; nếu Leader đang dọn kho thì thêm một clone dọn.
 - **Chưa biết** server làm gì khi túi người nhận đầy (M4). Trong lúc chưa đo, mỗi lượt chỉ giao **đúng số món đã xin**.
 
@@ -244,7 +316,8 @@ Túi Clone ──(về khu phụ; 17 khi ô trống < NguongNhan)──► Rươ
   - rương: gói 31, **chỉ có khi đã mở**, nên lưu kèm thời điểm đọc.
 - **Khoá gộp:** `(templateId, upgrade, isExpires)`. Ghi theo **nội dung**, không giữ tham chiếu object (sub 115 dựng lại object khoảng 20 giây một lần — `NSOLITEPRO/docs/reference/SERVER_FACTS.md:127`).
 - **Món khoá** vẫn có thể nằm trong túi acc (có từ trước). Chúng hiện riêng với cờ *"khoá — không giao được"* và **không tính** vào hàng rút được.
-- **Mỗi dòng hiện:** ID, tên tiếng Việt, cấp +, có hạn hay không, tổng số lượng, số ô, phân bố theo từng acc (túi / rương).
+- **Mỗi dòng hiện:** ID, tên tiếng Việt, **kệ**, cấp +, có hạn hay không, **tổng / đang giữ / khả dụng**, số ô, phân bố theo từng acc (túi / rương), cờ **rác** và **theo dõi**.
+- **Giữ chỗ lưu cùng sổ kho** (`Data/kho.txt`), để khởi động lại app thì lệnh đang dở không mất chỗ đã giữ.
 - **Sức chứa** — số dùng cho câu rao "70/360":
   - `{tong}` = Σ **clone** (số ô túi + số ô rương).
   - `{dung}` = số ô đang có đồ trong phần trên.
@@ -286,7 +359,16 @@ Túi Clone ──(về khu phụ; 17 khi ô trống < NguongNhan)──► Rươ
 
 ### 9.2 Leader tự rao (chat cộng đồng, gói −23)
 
-- **Chỉ Leader rao.** Bật/tắt bằng `RaoBat`, nhịp `RaoNhipGiay` (mặc định **5 giây**).
+- **Chỉ Leader rao.** Bật/tắt bằng `RaoBat`.
+- **Nhịp rao theo `RaoCheDo` (D31):**
+
+| Chế độ | Khi nào rao |
+|---|---|
+| **`ThongMinh`** (mặc định) | Rao mỗi `RaoNhipGiay` (5 giây) **khi** trong khu chính có **người ngoài** (không phải acc của kho), **hoặc** số liệu kho vừa đổi (trong 60 giây gần nhất). Còn lại thì mỗi `RaoVangGiay` (300 giây) rao một lần. |
+| `Deu` | Mỗi `RaoNhipGiay` giây, bất kể có ai hay không (như user chốt ở vòng 2). |
+
+- **Vì sao mặc định là `ThongMinh`:** `Deu` 5 giây suốt 24 giờ là **17.280 tin/ngày**. Auto Sell rao 5 giây chỉ chứng minh server **cho phép** nhịp đó, **không** chứng minh rao liên tục cả ngày là an toàn trước việc bị báo spam.
+- **"Người ngoài"** = người trong `OtherPlayers` của Leader mà không phải Leader, dự phòng, hay clone của kho.
 - **Mẫu câu tự đặt** (`RaoMau`), với các biến:
 
 | Biến | Nghĩa |
@@ -305,7 +387,12 @@ Túi Clone ──(về khu phụ; 17 khi ô trống < NguongNhan)──► Rươ
 - **Mỗi sự kiện gửi hai nơi:**
   - **chat riêng** cho **Chủ kho** liên quan: người ra lệnh, hoặc Chủ kho vừa nạp. Không gửi cho người lạ, trừ khi bật `ChatVoiNguoiLa`;
   - **chat cộng đồng**, nếu `BaoCongDong` bật.
-- **Sự kiện:** nhận lệnh · chờ người nhận · clone sẽ mời · xong lệnh · nạp xong · từ chối nạp (đầy / đang dọn) · KHO ĐẦY · đổi Leader.
+- **Sự kiện:** nhận lệnh · chờ người nhận · clone sẽ mời · xong lệnh · nạp xong · từ chối nạp (đầy / đang dọn) · KHO ĐẦY · đổi Leader · **dọn rác** (số món, yên thu được) · **món theo dõi** (dưới đây).
+- **Theo dõi món (D36):** Chủ kho đặt `theo <id> [N]`:
+  - **có `N`** → báo khi tổng khả dụng **xuống dưới N**, và báo lần nữa khi **lên lại ≥ N**;
+  - **không có `N`** → báo mỗi khi món đó **về kho**.
+  - Mỗi món báo tối đa 1 lần mỗi 10 phút, để không bị spam khi nạp nhiều lượt liên tiếp.
+- **Báo cáo ngày (D36):** đến `BaoCaoGio`, Leader nhắn riêng cho **mọi Chủ kho** một tin tóm tắt ngày, ví dụ `@512 Hom nay: nhap 120 mon (8 luot), xuat 30 (3 lenh), don rac 15 (+4.500 yen). Kho 190/360`. Tin dài hơn giới hạn thì tách làm nhiều tin, mỗi tin có tem riêng.
 - **Hàng đợi chat cộng đồng** dùng chung với tin rao:
   - **sự kiện chen trước** tin rao định kỳ;
   - giữa hai tin cộng đồng luôn cách ít nhất `RaoNhipGiay`.
@@ -326,6 +413,9 @@ Túi Clone ──(về khu phụ; 17 khi ô trống < NguongNhan)──► Rươ
 | `co <id>` | kho có bao nhiêu một món | `@104 457 Da cap 5: 120 (3 clone)` |
 | `lay <id> [sl\|het] [+cấp] [cho <tên>]` | tạo lệnh rút; không có `cho` thì giao cho chính người ra lệnh | `@105 Lenh #12: 5 x Da cap 5 cho Abc. Toi Lang Tone khu 3` |
 | `huy [#số]` | huỷ lệnh của chính mình | `@106 Da huy lenh #12` |
+| `goi` | liệt kê các gói rút đã định sẵn | `@108 Goi: dapdo, hoimau, sukien` |
+| `lay goi <tên> [cho <tên người>]` | rút cả gói (D35) | `@109 Lenh #13: goi dapdo (4 mon). Thieu: Da cap 7 (con 2/5)` |
+| `theo <id> [N]` · `botheo <id>` | bật / tắt theo dõi món (D36) | `@110 Theo doi 457: bao khi duoi 50` |
 | `nap` | hỏi Leader đang nhận được bao nhiêu món | `@107 San sang nhan 36 mon` |
 
 ## 10. Giao diện — ⚠ BỐ CỤC PHẢI TRÌNH USER DUYỆT TRƯỚC KHI CODE
@@ -338,7 +428,12 @@ Túi Clone ──(về khu phụ; 17 khi ô trống < NguongNhan)──► Rươ
   - *Túi trống*, *Rương trống*;
   - *Trạng thái kho*: Sẵn sàng / Đang nhận / Đang giao / Đang dọn / Đang sang khu / ĐẦY / Offline;
   - *Phiên GD*: đối phương + bước hiện tại, ví dụ `Chờ 45 · 34s`.
-- **Tổng kho:** bảng món + ô tìm + dòng sức chứa `70/360` + tổng xu.
+- **Tổng kho:** bảng món + ô tìm + lọc theo kệ + dòng sức chứa `70/360` (và theo từng kệ) + tổng xu và yên.
+  - Chuột phải vào một món: *Đánh dấu rác* · *Theo dõi…* · *Đổi kệ cho loại món này*.
+- **Kệ hàng:** bảng clone → kệ; bảng nhóm món → kệ; sức chứa từng kệ.
+- **Gói rút:** thêm, sửa, xoá gói (tên + danh sách món + số lượng); nút *Rút gói…*.
+- **Thùng rác:** danh sách rác, ngưỡng, cách dọn, nút *Dọn rác ngay*, tổng yên đã thu.
+- **Theo dõi:** danh sách món đang theo dõi + ngưỡng; giờ báo cáo ngày.
 - **Điều phối** (D21): chọn món → số lượng → người nhận (gõ tên bất kỳ, hoặc chọn Chủ kho) → **Giao** → vào hàng chờ.
 - **Hàng chờ:** số lệnh, món, số lượng, người nhận, nguồn (tool / chat + tên), tiến độ, clone đang giao, nút Huỷ.
 - **Nhật ký:** nhập / xuất / dọn, lọc theo ngày, theo acc, theo đối tác (đọc từ `Logs/<ngày>/giaodich.csv`). Có nút mở thư mục log.
@@ -355,11 +450,14 @@ MainForm ──view──> FleetManager ──owns──> N × NsoClient
                         │                   └─ Heartbeat 60 s + KeepAlive (CÓ SẴN, D23)
                         │
                         └──> KhoDieuPhoi (MỘT cho mỗi tiến trình)
-                               ├─ SoKho        (túi + rương, sức chứa, lưu đĩa)
-                               ├─ HangCho      (lệnh rút từ tool + chat)
-                               ├─ BoChon       (clone nhận khi dọn / clone giao khi rút)
+                               ├─ SoKho        (túi + rương, sức chứa, GIỮ CHỖ, lưu đĩa)
+                               ├─ HangCho      (lệnh rút từ tool + chat, bung gói rút)
+                               ├─ BoChon       (clone nhận khi dọn theo KỆ / clone giao khi rút)
+                               ├─ KeHang       (clone → kệ, template → nhóm)
+                               ├─ ThungRac     (ngưỡng, bán/vứt, không đụng món đang giữ)
+                               ├─ TheoDoi      (ngưỡng món, báo cáo ngày)
                                ├─ KhoLenh      (đọc lệnh chat, danh sách Chủ kho, CheDoNhan)
-                               ├─ KenhChat     (tem @NNN, hàng đợi cộng đồng, rao 5 s, sàn chat riêng)
+                               ├─ KenhChat     (tem @NNN, hàng đợi cộng đồng, rao thông minh / đều, sàn chat riêng)
                                ├─ Leader       (chỉ định, dự phòng)
                                └─ NhatKy       (log theo ngày §8.1: app / giaodich / chat / lenh / hex)
 
@@ -372,7 +470,7 @@ Có sẵn: ChatService.SendPublicChat (−23), SendPrivateChat (−22); ItemServ
 - **`KhoMode.Tick()`** xét theo thứ tự ưu tiên:
   1. đang có phiên giao dịch → `TradeEngine.Tick()`;
   2. có việc bộ điều phối giao → làm việc đó: sang khu, giao, nhận, lấy/cất rương, tách chồng;
-  3. Leader rảnh → dọn kho (§6);
+  3. rảnh → dọn kho (§6): Leader chuyển đồ đi; clone cất rương, dọn rác (§6.2), dùng túi vải (§6.3);
   4. không có việc → về đúng khu. Leader đứng đúng x/y; clone đứng đâu cũng được.
 - **`TradeEngine`** cho phép gọi từ ngoài như sau:
 
@@ -419,10 +517,14 @@ Có sẵn: ChatService.SendPublicChat (−23), SendPrivateChat (−22); ItemServ
 
 ## 13. Lộ trình
 
-### P0 — Đo trên server chính (làm TRƯỚC, bản debug có nút bấm tay + ghi hex; dùng đồ rẻ)
+### P0 — Đo trên server chính (làm TRƯỚC; chỉ dùng đồ rẻ)
+
+- **P0a — test tay** bằng 2 client thường, theo **`TEST_TAY.md`**. Phủ M3, M4, M6, M7, M10, M11, M14, M15, M16, **M17**, cùng các câu cho ý tưởng thùng rác và túi vải. **Làm đầu tiên**: không cần code.
+- **P0b — đo bằng bot**: bản debug có nút bấm tay và ghi hex. Phủ M1, M2, M5, M8, M9, M12, M13. **Bắt đầu sau khi có kết quả T0** (M17).
 
 | Mã | Đo gì | Phục vụ |
 |---|---|---|
+| **M17** | **Món nhận qua giao dịch có bị chuyển thành KHOÁ không** (T0) | **Cả thiết kế.** Bị khoá thì đồ vào kho không rút ra được. |
 | M1 | Một phiên người chơi nạp 1 món cho bot: hex + thứ tự 37/45/46/58/8/9 | §5 |
 | M2 | Bot giao 1 món: server có gửi gói xoá ô cho bên giao không | R10 |
 | M3 | Đồ có hạn dùng giao dịch được không | §5, §7 |
@@ -444,7 +546,7 @@ Kết quả ghi vào `GIAO_DICH.md` §9, kèm hex.
 
 ### P1 — Nạp vào Leader + sổ kho (chỉ túi) + chat
 
-- **Làm:** luồng §5; cài đặt §4; `CheDoNhan`; sổ kho phần túi; §9.1–9.3; cột lưới; **log theo ngày §8.1**.
+- **Làm:** luồng §5; cài đặt §4; `CheDoNhan`; sổ kho phần túi; §9.1–9.3 (gồm **rao thông minh**); cột lưới; **log theo ngày §8.1**.
 - **Xong khi:**
   - Leader ở khu chính đúng x/y, 3 clone ở khu phụ, chạy **24 giờ** không rớt hẳn;
   - nạp bằng tay **và** bằng `gdvp` tổng 50 món + xu, qua ≥5 lượt; sổ kho khớp túi thật 100%;
@@ -454,17 +556,21 @@ Kết quả ghi vào `GIAO_DICH.md` §9, kèm hex.
 
 ### P2 — Rút (tool + chat) + điều phối + tách chồng
 
-- **Làm:** luồng §7; §9.4; hàng chờ; điều phối trên tool với người nhận bất kỳ.
-- **Xong khi** rút được: 1 món, cả chồng, một phần chồng, món nằm rải ở 3 clone, giao cho một người **không** phải Chủ kho (một lần ra lệnh từ tool, một lần bằng `lay … cho <tên>`). Mỗi trường hợp chạy được với cả người bấm tay lẫn `nhan`. Hai Chủ kho ra lệnh cùng lúc thì các lệnh được xếp hàng đúng thứ tự.
+- **Làm:** luồng §7; §9.4; hàng chờ; điều phối trên tool với người nhận bất kỳ; **giữ chỗ (D34) ngay từ đầu**, vì vá vào sau thì đắt.
+- **Xong khi** rút được: 1 món, cả chồng, một phần chồng, món nằm rải ở 3 clone, giao cho một người **không** phải Chủ kho (một lần ra lệnh từ tool, một lần bằng `lay … cho <tên>`). Mỗi trường hợp chạy được với cả người bấm tay lẫn `nhan`. Hai Chủ kho **cùng xin món chỉ đủ cho một người** → lệnh sau nhận báo *"đang giữ cho lệnh khác"*, không có lệnh nào giao dở.
 
 ### P3 — Dọn kho + rương + sức chứa đầy đủ
 
-- **Làm:** §6 đầy đủ; sổ kho gồm rương; `{tong}` tính cả rương.
-- **Xong khi:** nạp liên tục 100 món mà không lượt nào bị từ chối quá 1 phút; sau khi dọn, túi Leader về trống; sổ kho khớp.
+- **Làm:** §6 đầy đủ; **kệ hàng §6.1**; **thùng rác §6.2**; sổ kho gồm rương; `{tong}` tính cả rương.
+- **Xong khi:**
+  - nạp liên tục 100 món mà không lượt nào bị từ chối quá 1 phút; sau khi dọn, túi Leader về trống; sổ kho khớp;
+  - món đi đúng kệ; kệ đầy thì tràn sang "Khác" và có log `KE_TRAN`;
+  - kho vượt ngưỡng thì chỉ món trong danh sách rác bị bán, không đụng món đang giữ chỗ.
 
 ### P4 — Hoàn thiện
 
 - Leader dự phòng tự thay; lệnh `tim`; cache tên món; cảnh báo đồ có hạn; trạng thái KHO ĐẦY.
+- **Gói rút** (D35); **theo dõi món + báo cáo ngày** (D36); **tự dùng túi vải** (D37 — chỉ bật sau khi có kết quả T13).
 
 ### P5 — Auto mua bán (CHƯA ƯU TIÊN)
 
@@ -483,16 +589,23 @@ Kết quả ghi vào `GIAO_DICH.md` §9, kèm hex.
 | 6 | Thêm bản lõi đóng băng thứ ba. | Vừa, lâu dài | 16/61 commit sửa lõi | `NGUON_GOC.md`; khi hỏng, việc đầu tiên là so lõi. |
 | 7 | Một kho chỉ chạy trong một tiến trình. | Thấp | §11 | Ghi trong README. |
 | 8 | **Chế độ `TatCa` là MẶC ĐỊNH** (user chốt sau khi đã được cảnh báo): người lạ đổ rác làm đầy kho, hoặc mở phiên rồi treo để giữ Leader bận. | Vừa | D16 | `ChoNguoiLa` = 45 giây; Chủ kho chen ngang được; KHO ĐẦY thì từ chối; `giaodich.csv` ghi tên người nạp để truy lại; chuyển sang `ChiChuKho` chỉ bằng một ô cài đặt. |
-| 9 | Bị khoá chat vì rao 5 giây/lần. | Vừa | Server chính từng khoá chat riêng khi lặp; chat cộng đồng chưa đo | Tem `@NNN`; M14; nhịp rao cài được. |
+| 9 | Bị khoá chat hoặc bị báo spam vì rao dày. | Vừa | Server chính từng khoá chat riêng khi lặp; chat cộng đồng chưa đo | Tem `@NNN`; **rao thông minh là mặc định** (D31); M14 / T11; nhịp rao cài được. |
 | 10 | **Chat cộng đồng công khai tình trạng kho** cho mọi người trong khu. | Thấp | D19/D20 do user chọn | Tắt được bằng `RaoBat` / `BaoCongDong`. |
 | 11 | Mốc hồi chiêu đổi khu của bot lấy lúc **gửi lệnh**, còn game đếm từ lúc **tới nơi** → chuyến về liền ngay sau chuyến đi có thể bị từ chối. | Thấp | `Navigator.cs:1336`; D28 | Lấy mốc lúc nhận MAP_INFO; bộ chọn ưu tiên clone đã hết hồi chiêu; M15. |
 | 12 | Tự đánh ở làng có thể không tạo lưu lượng như mong đợi. | Vừa | Chưa đo ở làng | M13; `TickDocIm` (gói 93) vẫn giữ luồng đọc. |
 | 13 | Sổ kho lệch sau sub 115. | Vừa | `SERVER_FACTS.md:127` | Ghi theo nội dung; đối chiếu sau mỗi phiên. |
-| 14 | **Log giữ hết** (`GiuLogNgay = 0`) và rao 5 giây/lần → đĩa VPS đầy dần. Dung lượng mỗi ngày **chưa đo**. | Thấp → Vừa | D26 | Sau 1 ngày chạy P1 thì đo dung lượng thư mục ngày; nếu lớn thì đề xuất user đặt `GiuLogNgay`. `LogHexGiaoDich` tắt được. |
-
+| 14 | **Log giữ hết** (`GiuLogNgay = 0`) và chat rao → đĩa VPS đầy dần. Dung lượng mỗi ngày **chưa đo**. | Thấp → Vừa | D26 | Sau 1 ngày chạy P1 thì đo dung lượng thư mục ngày; nếu lớn thì đề xuất user đặt `GiuLogNgay`. `LogHexGiaoDich` tắt được. |
+| 15 | **Đồ nhận qua giao dịch bị chuyển thành khoá** → vào kho rồi không rút ra được. | **Sống còn**, chưa biết | Chưa ai kiểm (M17) | **T0 làm đầu tiên.** Nếu đúng là bị khoá thì dừng lại, bàn lại toàn bộ thiết kế. |
+| 16 | Thùng rác **bán nhầm đồ quý**. | Vừa | D33 | Chỉ đụng món user tự đánh dấu; không bao giờ đụng món có cấp + > 0, món khoá, món đang giữ chỗ; mỗi món bị dọn đều có dòng log. |
+| 17 | **Kệ hàng lệch**: kệ đầy, hoặc tool đoán sai nhóm món. | Thấp | D32 | Tràn sang "Khác" kèm log `KE_TRAN`; chỉ đoán theo 3 khoảng `Type` đã có nguồn; user sửa được. |
+| 18 | Túi vải dùng sai điều kiện, hoặc dùng nhầm món. | Thấp | Chưa có dữ liệu (T13) | Mặc định **tắt**; danh sách món do user xác nhận; server từ chối thì không thử lại. |
 ## 15. Câu hỏi còn mở
 
-Không còn câu nào chặn việc bắt đầu P0.
+Không còn câu hỏi thiết kế nào chặn việc bắt đầu.
+
+**Đang chờ user:**
+1. Kết quả test tay (`TEST_TAY.md`) — **T0 trước tiên**.
+2. Số `Release` của .NET trên VPS (§3.1 luật 4).
 
 **Đã xử lý:** NSOBAOTATL đã commit `7715bcf` (nhãn "CHUA TEST") và push lên `github.com/tungnv27/NSOBAOTATL`. Spec này nằm ở `github.com/tungnv27/NSOKHODO`.
 
