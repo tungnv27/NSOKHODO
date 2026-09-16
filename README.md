@@ -4,7 +4,7 @@ Kho đồ chung cho Ninja School Online: khoảng 10 acc clone online 24/7 ở L
 Người chơi chỉ nhắn tin và giao dịch với **một acc Leader**. Tool biết tổng kho có gì, và khi cần
 thì tự chọn clone giao đồ cho người nhận.
 
-**Trạng thái:** spec đã chốt (v1, 2026-09-16) · test tay trên server chính xong · **chưa code**.
+**Trạng thái:** spec đã chốt (v1.1, 2026-09-16) · test tay trên server chính xong · **chưa code**.
 
 ## Tài liệu
 
@@ -16,5 +16,6 @@ thì tự chọn clone giao đồ cho người nhận.
 
 ## Công nghệ
 
-C# · .NET Framework 4.5.2 (`net452`) · WinForms — chạy trên Windows Server 2012, không cần cài runtime.
+C# · .NET Framework 4.5.2 (`net452`) · WinForms — chạy trên Windows Server 2012.
+Máy cần **.NET Framework 4.5.2 trở lên**. Mở app mà Windows báo thiếu thì cài **.NET Framework 4.8** (hỗ trợ Server 2012).
 Khung sẽ tách từ [NSOBAOTATL](https://github.com/tungnv27/NSOBAOTATL) `7715bcf`.

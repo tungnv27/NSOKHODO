@@ -1,6 +1,6 @@
 # NSOKHODO — Kho đồ chung cho Ninja School Online
 
-> **Trạng thái: ✅ ĐÃ CHỐT — SPEC v1 (2026-09-16, 6 vòng với user). CHƯA CODE.**
+> **Trạng thái: ✅ ĐÃ CHỐT — SPEC v1.1 (2026-09-16, 7 vòng với user; v1.1 = dùng trọn .NET 4.5.2, D49). CHƯA CODE.**
 > Sửa spec sau mốc này thì ghi thêm một vòng ở §1 và một dòng quyết định ở §2, **không sửa ngầm**.
 > **Test tay (P0a) XONG:** T0 cho thấy **giao dịch KHÔNG khoá đồ** → thiết kế đi tiếp. Kết quả đầy đủ: `TEST_TAY.md`.
 > **Việc tiếp theo:** P0b — dựng khung project và đo những gì tay không đo được (§13). **Chỉ bắt đầu khi user ra lệnh.**
@@ -66,6 +66,9 @@ có phân quyền, báo qua Telegram.
 **Vòng 6:**
 > Leader tôi muốn cài được tọa độ đứng. Nếu không cài thì đứng đâu thì đứng. T13 đúng. T8 đúng.
 
+**Vòng 7 (sau khi chốt v1):**
+> Dùng 4.5.2 đi.
+
 ## 2. Quyết định đã chốt
 
 | # | Quyết định | Nguồn |
@@ -122,6 +125,7 @@ có phân quyền, báo qua Telegram.
 | D40 | **T4:** lời mời bị khoá **31 giây**; nhưng phiên được đồng ý xong thì **mời lại được ngay**. | Mời lại cách **31 giây** (`MoiLaiGiay`). Rút nhiều lượt cho cùng một người thì mời lượt sau ngay khi lượt trước xong. |
 | D41 | **T5:** mời người đang giao dịch → server báo **"đối phương đang có giao dịch khác"**. | Chủ kho **không chen ngang được bằng lời mời** khi Leader đang bận. Phải chen bằng **chat `nap`** (§5, §9.4). Clone mời người nhận đang bận → chờ 31 giây rồi mời lại. |
 | D42 | **T8:** rương là NPC **"Thủ khố"**, phải đứng **sát NPC** mới cất/lấy được. MODGAME: NPC template **5**, đứng cách ≤ **22 px**, rồi mở bằng `-30 {-103, 4}`, **không qua menu NPC** (`MODGAME/src/GameScr.java:14356-14362`, `:13026-13031`). | Cần cất / lấy rương thì **Leader tự đi tới Thủ khố**, xong thì quay về chỗ đứng (D48). Clone dùng Thủ khố ở khu phụ. Không cần gói menu 29. |
+| D49 | **Vòng 7 (user):** *"Dùng 4.5.2 đi."* | **Dùng trọn .NET Framework 4.5.2.** Được dùng mọi API tới 4.5.2. `App.config` khai `sku=".NETFramework,Version=v4.5.2"` (MINH đề xuất kèm, để thiếu runtime thì **báo ngay lúc mở app** thay vì crash giữa chừng). Thay cho luật "trường hợp xấu nhất: chỉ 4.5 gốc" của v1. Chi tiết ở §3.1. |
 | D48 | **Vòng 6 (user):** *"Leader tôi muốn cài được toạ độ đứng. Nếu không cài thì đứng đâu thì đứng."* | `LeaderX/LeaderY` **mặc định để trống**. **Có cài** → Leader đứng đúng chỗ đó, đi Thủ khố xong thì quay về. **Không cài** → Leader không bị kéo đi đâu; đi Thủ khố xong thì đứng luôn ở đó. |
 | D43 | **T12:** **không bán được gì**; rác thì giao vào một clone, user tự dọn tay. | Thùng rác = **kệ Rác**: dồn rác vào clone thuộc kệ Rác; tool **nhả clone** đó (đăng xuất) để user đăng nhập tay dọn, rồi **nhận lại** (§6.2). |
 | D44 | **T13:** "không tự mở rộng". | **Bỏ D37** (tự dùng túi vải). |
@@ -156,8 +160,8 @@ có phân quyền, báo qua Telegram.
 | Hạng mục | Chốt | Vì sao |
 |---|---|---|
 | Ngôn ngữ | **C#** | Toàn bộ lõi (~30.000 dòng: protocol, điều hướng, quản lý nhiều acc) đã có sẵn bằng C# |
-| Nền tảng | **.NET Framework 4.5.2** — csproj kiểu SDK, `<TargetFramework>net452</TargetFramework>` | Server 2012 có sẵn .NET 4.5, **không phải cài runtime**. Target net452 còn là **chốt chặn lúc build**: gọi API mới hơn 4.5.2 thì không build được. |
-| `App.config` | `supportedRuntime sku=".NETFramework,Version=v4.5"` + `gcServer enabled="true"` | Máy chỉ có 4.5 gốc vẫn mở được app. Server GC giúp chịu tải nhiều acc (giữ nguyên như NSOBAOTATL). |
+| Nền tảng | **.NET Framework 4.5.2** (D49) — csproj kiểu SDK, `<TargetFramework>net452</TargetFramework>` | Server 2012 hỗ trợ tới .NET 4.8; bản 4.5.2 thường đã có qua Windows Update. Target net452 còn là **chốt chặn lúc build**: gọi API mới hơn 4.5.2 thì không build được. |
+| `App.config` | `supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.5.2"` + `gcServer enabled="true"` | **Khác NSOBAOTATL / NSOLITEPRO** (hai bên khai `v4.5`). Khai 4.5.2 thì máy thiếu runtime sẽ **từ chối mở app kèm thông báo rõ ràng**, không mở được rồi crash giữa chừng. Server GC giúp chịu tải nhiều acc. |
 | Giao diện | **WinForms**, tiếng Việt **có dấu** | Dùng qua Remote Desktop trên VPS. **Chat gửi vào game thì không dấu** (D46). |
 | Thư viện ngoài | **Không có.** Không NuGet, không thư viện JSON; dữ liệu ghi dạng pipe-delimited / `key=value` | Chép 1 file exe là chạy; không bị lệch phiên bản DLL trên VPS |
 | Build | `dotnet build NSOKHODO.sln -c Release` **trên máy dev** | VPS chỉ cần file exe, không cần SDK |
@@ -167,11 +171,11 @@ có phân quyền, báo qua Telegram.
 **Luật code bắt buộc khi chạy Server 2012:**
 1. **Không gọi API mới hơn 4.5.2.** Ví dụ `DateTimeOffset.ToUnixTime*`, `Array.Empty`, `Task.CompletedTask`. Cần Unix-time thì tính tay từ mốc `1970-01-01 UTC`. Bài học: NSOLITEPRO từng crash `Method not found` trên VPS vì đúng lỗi này (`WORKLOG.md:2028`).
 2. **Không dùng cú pháp cần kiểu dữ liệu mà 4.5 không có**: tuple `(a, b)` (cần `System.ValueTuple`), `Span<T>`, `IAsyncEnumerable`… `LangVersion latest` cho phép viết, nhưng thiếu kiểu thì build báo lỗi — chốt chặn vẫn hoạt động.
-3. ⚠ **Không dùng API chỉ có từ 4.5.1 / 4.5.2.** App khai cần 4.5, nhưng build theo bộ API của 4.5.2, nên các API đó **vẫn build được** mà sẽ crash trên máy **chỉ có 4.5 gốc**.
-   - **Chốt 2026-09-16:** user **không có** số phiên bản .NET của VPS → code theo **trường hợp xấu nhất: VPS chỉ có 4.5 gốc**. Luật này là **bắt buộc**, không phải khuyến nghị.
-   - Chạy được thì đã chắc: NSOLITEPRO cùng cấu hình đã "pass" trên chính VPS này.
-   - Khi review code, API nào lạ thì tra tài liệu Microsoft xem có từ phiên bản nào.
-4. **Kiểm tra bản .NET trên VPS** (khi nào có dịp, không bắt buộc) (PowerShell):
+3. **Dùng trọn 4.5.2 (D49).** Được dùng mọi API tới 4.5.2. Khai báo runtime trong `App.config` phải **khớp** với target (`v4.5.2`), để máy thiếu runtime thì báo ngay lúc mở.
+   - *(Thay luật v1 "chỉ dùng API của 4.5 gốc".)*
+   - ⚠ **Rủi ro còn lại:** VPS có thể **chỉ có 4.5 gốc**. User không có số phiên bản; NSOLITEPRO "pass" chỉ chứng minh có **từ 4.5 trở lên**, vì bên đó khai `v4.5`.
+   - Nếu mở app mà Windows báo **thiếu .NET Framework 4.5.2** → **cài .NET Framework 4.8** (hỗ trợ Server 2012, bao trùm 4.5.2), rồi mở lại. Không phải sửa code.
+4. **Kiểm tra bản .NET trên VPS** trước khi chép exe lên (PowerShell):
    ```powershell
    (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full').Release
    ```
@@ -571,6 +575,7 @@ Có sẵn: ChatService.SendPublicChat (−23), SendPrivateChat (−22); ItemServ
   - `Navigator.CharBurstMove` / `DoZoneChange`;
   - `KeepAliveController`, `AutoModeBase.Heartbeat`.
 - **Bỏ khỏi khung NSOBAOTATL:** `BaoTaTl`, phép đo T1, **`BinhMauRunner`** (D38 — nó uống bình trong túi, tức là tiêu hao đồ trong kho).
+- **`App.config` sửa có chủ đích:** `sku` `v4.5` → **`v4.5.2`** (D49). Ghi vào `NGUON_GOC.md` mục "Sửa có chủ đích" khi tách.
 - **`accounts.txt` giữ nguyên 23 cột**, để dùng qua lại được giữa ba tool.
 - **Chi phí đã biết:** thêm **bản lõi đóng băng thứ ba**. Trong 61 commit gần đây của NSOLITEPRO có 16 commit sửa `Core/` hoặc `Protocol/` (`NSOBAOTATL/docs/NGUON_GOC.md`). Tách thư viện lõi dùng chung là việc riêng, không làm ở đây.
 
@@ -681,9 +686,9 @@ Kết quả ghi vào `GIAO_DICH.md` §9, kèm hex.
 
 ## 15. Câu hỏi còn mở
 
-**Không còn câu hỏi mở.** Spec đã chốt (v1).
+**Không còn câu hỏi mở.** Spec đã chốt (v1.1).
 
-- **Số phiên bản .NET của VPS:** user không có → code theo trường hợp xấu nhất (§3.1 luật 3).
+- **Số phiên bản .NET của VPS:** user không có. Chốt dùng trọn 4.5.2 (D49); thiếu runtime thì cài .NET 4.8 (§3.1 luật 3).
 - **P0b:** chờ user ra lệnh. Việc đầu tiên khi bắt đầu:
   1. tách khung từ NSOBAOTATL `7715bcf` (kèm `NGUON_GOC.md`);
   2. viết `CLAUDE.md` + `docs/STATUS.md` theo khuôn họ NSO;
