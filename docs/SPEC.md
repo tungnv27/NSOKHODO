@@ -1,6 +1,6 @@
 # NSOKHODO — Kho đồ chung cho Ninja School Online
 
-> **Trạng thái:** SPEC — ý tưởng chốt với user ngày **2026-09-16** (5 vòng). **CHƯA CODE.**
+> **Trạng thái:** SPEC — ý tưởng chốt với user ngày **2026-09-16** (6 vòng). **CHƯA CODE.**
 > **Test tay (P0a) XONG:** T0 cho thấy **giao dịch KHÔNG khoá đồ** → thiết kế đi tiếp. Kết quả đầy đủ: `TEST_TAY.md`.
 > **Việc tiếp theo:** P0b — dựng khung project và đo những gì tay không đo được (§13).
 > **Hợp đồng giao thức giao dịch** (gói tin, nguồn, mức chắc chắn): `GIAO_DICH.md`. Đọc file đó trước khi code.
@@ -11,7 +11,7 @@
 
 Bot **headless** giữ khoảng 10 acc clone online 24/7 ở **Làng Tone (map 22)**.
 
-- **Leader** đứng ở **khu chính**, cạnh NPC **Thủ khố**. Đây là acc **duy nhất** người chơi nhắn tin và nạp đồ vào.
+- **Leader** đứng ở **khu chính**, tại toạ độ user cài; không cài thì đứng đâu cũng được. Đây là acc **duy nhất** người chơi nhắn tin và nạp đồ vào.
 - **Clone** đứng ở **khu phụ** (cho đỡ rối). Chỉ khi cần giao nhận chúng mới sang khu chính.
 - Leader nhận đồ rồi tự dọn đi chỗ khác: rương của nó, rồi các clone theo **kệ hàng**.
 - Tool biết **tổng kho có gì, nằm ở đâu, còn bao nhiêu chỗ**.
@@ -61,6 +61,9 @@ có phân quyền, báo qua Telegram.
 > bản; đi xa không cất được, phải sát NPC. T9 có NPC id 13. T12 không bán được gì cả — cần thì gd vào
 > clone, tôi tự dọn con clone đó. T13 không tự mở rộng. T14 tối đa giữ được 2 tỷ xu. T10 có nhận
 > được, nhưng phải gửi tiếng Việt không dấu. T11 nếu thêm @[000-999] thì không bị.
+
+**Vòng 6:**
+> Leader tôi muốn cài được tọa độ đứng. Nếu không cài thì đứng đâu thì đứng. T13 đúng. T8 đúng.
 
 ## 2. Quyết định đã chốt
 
@@ -117,7 +120,8 @@ có phân quyền, báo qua Telegram.
 | D39 | **T3:** bên giao khoá **vượt số ô trống** bên nhận → **server đóng phiên ngay**, không mất đồ; lúc có lúc không hiện popup kiểu "đối phương không đủ hành trang". | Bot **vẫn tự kiểm** trước khi đồng ý, để báo đúng lý do. Khi mình là bên giao mà phiên bị đóng ngay sau lúc khoá → hiểu là **người nhận thiếu ô**, tạm dừng lệnh và báo (R11). |
 | D40 | **T4:** lời mời bị khoá **31 giây**; nhưng phiên được đồng ý xong thì **mời lại được ngay**. | Mời lại cách **31 giây** (`MoiLaiGiay`). Rút nhiều lượt cho cùng một người thì mời lượt sau ngay khi lượt trước xong. |
 | D41 | **T5:** mời người đang giao dịch → server báo **"đối phương đang có giao dịch khác"**. | Chủ kho **không chen ngang được bằng lời mời** khi Leader đang bận. Phải chen bằng **chat `nap`** (§5, §9.4). Clone mời người nhận đang bận → chờ 31 giây rồi mời lại. |
-| D42 | **T8:** rương là NPC **"Thủ khố"**, phải đứng **sát NPC** mới cất/lấy được. MODGAME: NPC template **5**, đứng cách ≤ **22 px**, rồi mở bằng `-30 {-103, 4}`, **không qua menu NPC** (`MODGAME/src/GameScr.java:14356-14362`, `:13026-13031`). | **Leader đứng cạnh Thủ khố** (nút "Đặt cạnh Thủ khố"). Clone dùng Thủ khố ở khu phụ. Không cần gói menu 29. |
+| D42 | **T8:** rương là NPC **"Thủ khố"**, phải đứng **sát NPC** mới cất/lấy được. MODGAME: NPC template **5**, đứng cách ≤ **22 px**, rồi mở bằng `-30 {-103, 4}`, **không qua menu NPC** (`MODGAME/src/GameScr.java:14356-14362`, `:13026-13031`). | Cần cất / lấy rương thì **Leader tự đi tới Thủ khố**, xong thì quay về chỗ đứng (D48). Clone dùng Thủ khố ở khu phụ. Không cần gói menu 29. |
+| D48 | **Vòng 6 (user):** *"Leader tôi muốn cài được toạ độ đứng. Nếu không cài thì đứng đâu thì đứng."* | `LeaderX/LeaderY` **mặc định để trống**. **Có cài** → Leader đứng đúng chỗ đó, đi Thủ khố xong thì quay về. **Không cài** → Leader không bị kéo đi đâu; đi Thủ khố xong thì đứng luôn ở đó. |
 | D43 | **T12:** **không bán được gì**; rác thì giao vào một clone, user tự dọn tay. | Thùng rác = **kệ Rác**: dồn rác vào clone thuộc kệ Rác; tool **nhả clone** đó (đăng xuất) để user đăng nhập tay dọn, rồi **nhận lại** (§6.2). |
 | D44 | **T13:** "không tự mở rộng". | **Bỏ D37** (tự dùng túi vải). |
 | D45 | **T14:** mỗi nhân vật giữ tối đa **2 tỷ xu**. | Kiểm tra trước khi nhận xu. Leader vượt `XuNguong` thì dồn xu sang clone (§6 bước 6). |
@@ -129,7 +133,7 @@ có phân quyền, báo qua Telegram.
 
 **CÓ (giai đoạn 1–4):**
 - Đăng nhập nhiều acc, chia proxy, tự đăng nhập lại, tự đánh chống rớt mạng. Phần này đã có trong lõi.
-- Đi tới map kho; Leader về khu chính và đứng cạnh Thủ khố; clone về khu phụ.
+- Đi tới map kho; Leader về khu chính (đứng đúng toạ độ nếu có cài); clone về khu phụ.
 - Bộ máy giao dịch với hai vai: **nhận** và **giao**.
 - Leader nhận đồ và xu; cất rương; dồn đồ sang clone theo kệ; dồn xu khi gần trần.
 - Clone sang khu chính theo lệnh; lấy đồ từ rương, tách chồng, giao cho người nhận.
@@ -181,7 +185,7 @@ có phân quyền, báo qua Telegram.
 | Vai | Số lượng | Ở đâu | Việc |
 |---|---|---|---|
 | **Chủ kho** | danh sách tên, user cài | — | Người chơi thật. Được xem kho và rút đồ qua tin nhắn. |
-| **Leader** | 1, cộng 1 dự phòng | khu chính, cạnh Thủ khố | Nhận chat, nhận đồ, cất rương, dồn đồ, rao trạng thái. |
+| **Leader** | 1, cộng 1 dự phòng | khu chính; đúng toạ độ nếu có cài, không cài thì đứng đâu cũng được | Nhận chat, nhận đồ, cất rương, dồn đồ, rao trạng thái. |
 | **Clone** | khoảng 10, **cấp 1 là đủ** (D47) | khu phụ, đứng đâu cũng được | Chứa đồ (túi + rương); sang khu chính khi được điều. |
 
 ### Cài đặt kho
@@ -192,7 +196,7 @@ có phân quyền, báo qua Telegram.
 | `Map` | 22 (Làng Tone) | |
 | `KhuChinh` | — | Khu của Leader, nơi giao nhận với người chơi. |
 | `KhuPhu` | — | Khu của clone. Bắt buộc khác `KhuChinh`. |
-| `LeaderX`, `LeaderY` | cạnh Thủ khố | Nút **"Đặt cạnh Thủ khố"** (lấy toạ độ NPC 5 ở khu chính) và **"Lấy chỗ đang đứng"**. Đặt xa Thủ khố hơn 22 px thì mỗi lần cất rương Leader phải đi qua lại. |
+| `LeaderX`, `LeaderY` | **trống** | D48. **Trống** = Leader đứng đâu cũng được. **Có giá trị** = Leader luôn quay về đúng chỗ này. Nhập tay, hoặc bấm **"Lấy chỗ đang đứng"** (đã có ở NSOBAOTATL); nút **"Xoá toạ độ"** để trở lại trống. Đặt xa Thủ khố thì mỗi lần cất rương Leader phải đi qua lại vài giây. |
 | `Leader`, `LeaderDuPhong` | — | Chọn trong lưới acc. |
 | `ChuKho` | rỗng | Danh sách tên nhân vật. |
 | `CheDoNhan` | **TatCa** | `TatCa` \| `ChiChuKho` (D16). |
@@ -228,7 +232,7 @@ có phân quyền, báo qua Telegram.
 
 **Leader dự phòng:**
 - Mọi bot chạy trong một tiến trình, và **mọi clone đều chuyển tiếp** tin nhắn của Chủ kho về bộ điều phối.
-- Leader offline thì bộ điều phối cho acc dự phòng sang khu chính, đứng cạnh Thủ khố. Dự phòng nhận vai Leader, báo ở chat cộng đồng và nhắn Chủ kho tên Leader mới.
+- Leader offline thì bộ điều phối cho acc dự phòng sang khu chính, đứng đúng toạ độ đã cài (nếu có). Dự phòng nhận vai Leader, báo ở chat cộng đồng và nhắn Chủ kho tên Leader mới.
 
 ## 5. Luồng NẠP (người chơi → Leader)
 
@@ -276,6 +280,7 @@ Túi Clone ──(về khu phụ, tới Thủ khố; 17 khi ô trống < NguongN
 ```
 
 **Mở rương (D42):**
+- Acc cần dùng rương (Leader hoặc clone) **tự đi tới NPC 5 trong khu của mình**, làm xong thì về lại chỗ đứng theo D48 (Leader) hoặc đứng luôn tại đó (clone).
 - Đứng cách NPC 5 ≤ 22 px → gửi `-30 {-103, 4}` **một lần mỗi phiên đăng nhập** (client gốc chỉ gửi khi chưa có danh sách rương) → nhận gói **31** → dùng **16/17** trong lúc vẫn đứng sát NPC.
 - Không dùng menu NPC.
 
@@ -487,7 +492,7 @@ Server không cho bán món nào (T12), nên tool **không tự bán, không t�
 - **Điều phối** (D21): chọn món → số lượng → người nhận (gõ tên bất kỳ, hoặc chọn Chủ kho) → **Giao** → vào hàng chờ.
 - **Hàng chờ:** số lệnh, món, số lượng, người nhận, nguồn (tool / chat + tên), tiến độ, clone đang giao, trạng thái (chờ / đang giao / tạm dừng + lý do), nút *Tiếp* / *Huỷ*.
 - **Nhật ký:** nhập / xuất / dọn / dồn xu / nhả clone, lọc theo ngày, theo acc, theo đối tác (đọc từ `Logs/<ngày>/`). Có nút mở thư mục log.
-- **Cài đặt:** toàn bộ bảng ở §4, gồm nút *Đặt cạnh Thủ khố* và *Lấy chỗ đang đứng*.
+- **Cài đặt:** toàn bộ bảng ở §4. Riêng toạ độ Leader: ô X / Y (để trống = tự do), nút *Lấy chỗ đang đứng*, nút *Xoá toạ độ*.
 
 ## 11. Kiến trúc
 
@@ -520,7 +525,7 @@ Có sẵn: ChatService.SendPublicChat (−23), SendPrivateChat (−22); ItemServ
   1. đang có phiên giao dịch → `TradeEngine.Tick()`;
   2. có việc bộ điều phối giao → làm việc đó: sang khu, giao, nhận, lấy/cất rương, tách chồng, dồn xu;
   3. rảnh → dọn kho (§6): Leader cất rương và chuyển đồ đi; clone cất rương;
-  4. không có việc → về đúng chỗ: Leader đứng đúng x/y ở khu chính; clone ở khu phụ, đứng đâu cũng được.
+  4. không có việc → về đúng khu. Leader: **có cài toạ độ** thì về đúng chỗ đó, **không cài** thì đứng yên tại chỗ (D48). Clone: ở khu phụ, đứng đâu cũng được.
 - **Chặn dùng đồ (D38):** `KhoMode` và mọi runner **không được gọi** gói dùng món (11) hay mặc/tháo đồ. `BinhMauRunner` **bị bỏ** khỏi khung. Có một ca kiểm tra trong `tools/kiemtra` bảo đảm không đường nào gửi các gói đó.
 - **`TradeEngine`** cho phép gọi từ ngoài như sau:
 
@@ -611,7 +616,8 @@ Kết quả ghi vào `GIAO_DICH.md` §9, kèm hex.
 
 - **Làm:** luồng §5 (gồm `nap` chen ngang / giữ cửa, kiểm trần xu); cài đặt §4; sổ kho phần túi; §9.1–9.3 (tem, **bỏ dấu**, rao thông minh); cột lưới; **log theo ngày §8.1**; chặn dùng đồ (D38).
 - **Xong khi:**
-  - Leader ở khu chính cạnh Thủ khố, 3 clone ở khu phụ, chạy **24 giờ** không rớt hẳn;
+  - Leader ở khu chính, 3 clone ở khu phụ, chạy **24 giờ** không rớt hẳn;
+  - có cài toạ độ → Leader luôn về đúng chỗ, kể cả sau khi đi Thủ khố hoặc đăng nhập lại; xoá toạ độ → Leader đứng yên tại chỗ;
   - nạp bằng tay **và** bằng `gdvp` tổng 50 món + xu, qua ≥5 lượt; sổ kho khớp túi thật 100%;
   - `TatCa` (mặc định): người lạ nạp được và không nhận tin riêng nào; Chủ kho nhắn `nap` thì phiên người lạ bị huỷ, Chủ kho nạp được trong 60 giây. `ChiChuKho`: người lạ bị từ chối;
   - mọi tin gửi đi có tem **và không có dấu**; câu rao đổi số liệu đúng sau mỗi lượt nạp;
@@ -677,8 +683,6 @@ Kết quả ghi vào `GIAO_DICH.md` §9, kèm hex.
 1. Số `Release` của .NET trên VPS (§3.1 luật 4).
 2. Đồng ý bắt đầu **P0b** (dựng khung + đo bằng bot) chưa.
 
-**Cách MINH đã hiểu các câu trả lời vòng 5** — user sửa nếu sai:
-- T13 *"không tự mở rộng"* → **bỏ hẳn** tính năng tự dùng túi vải (D44).
-- T8 *"tìm theo chức năng thủ khố"* → rương = NPC 5 theo mục "Thủ khố" của MODGAME (D42).
+**User đã xác nhận (vòng 6):** T13 = bỏ hẳn tự dùng túi vải (D44) · T8 = rương là NPC 5 theo mục "Thủ khố" của MODGAME (D42) · toạ độ Leader cài được, không cài thì tự do (D48).
 
 **Đã xử lý:** NSOBAOTATL đã commit `7715bcf` (nhãn "CHUA TEST") và push lên `github.com/tungnv27/NSOBAOTATL`. Spec này nằm ở `github.com/tungnv27/NSOKHODO`.
