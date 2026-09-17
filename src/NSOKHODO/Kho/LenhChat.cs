@@ -49,7 +49,7 @@ namespace NSOKHODO.Kho
                     r.Loai = tc.Count == 1 ? LoaiLenh.Goi : LoaiLenh.Khong;
                     return r;
                 case "xa":
-                    // D82: mo "cua xa" - giao thang vao clone khi co nhieu do (Leader day phai cho don kho).
+                    // D86: "xa nhanh" - goi clone dung canh Leader truoc khi nap nhieu; `xa xong` = nap xong.
                     if (tc.Count == 1) r.Loai = LoaiLenh.Xa;
                     else if (tc.Count == 2 && tc[1] == "xong") r.Loai = LoaiLenh.XaXong;
                     else return Sai(r, "xa | xa xong");

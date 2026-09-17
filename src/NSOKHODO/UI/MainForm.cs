@@ -317,7 +317,7 @@ namespace NSOKHODO.UI
                 online, Accounts.Count, DisconnectStats.TongTatCa(),
                 (_dp.KhoDay ? "   │   KHO ĐẦY" : "")
                 + (_cfg.KhuChinh < 0 ? "   │   CHƯA CÀI KHU CHÍNH (Cài đặt → Kho)" : "")
-                + (_dp.MoTaXa.Length > 0 ? "   │   " + (NameMask.Enabled ? "Cửa xả đang mở" : _dp.MoTaXa) : ""));
+                + (_dp.MoTaXa.Length > 0 ? "   │   " + (NameMask.Enabled ? "Đang xả nhanh" : _dp.MoTaXa) : ""));
             if (dong != _status.Text) _status.Text = dong;
         }
 

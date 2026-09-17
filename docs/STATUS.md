@@ -2,56 +2,54 @@
 
 > **File này GHI ĐÈ mỗi session.** Đọc đầu tiên để biết "đang ở đâu / làm gì tiếp".
 
-**Cập nhật lần cuối:** 2026-09-17 ~10h40 — **vòng 12 xong (D80–D85): gom đồ xếp chồng, cửa xả, log dễ đọc, lệnh khu
-riêng chờ hàng trên Leader, cảnh báo khu chính, thú cưỡi.** Vòng 11 đã commit `a530a56`. Vòng 12: build Release sạch,
-`tools/kiemtra/chay.ps1` PASS, soát lỗi độc lập (9 điểm, đã sửa), test sống đạt — **commit + push theo lời user
-("thấy ổn thì commit + push rồi sửa tiếp")**.
+**Cập nhật lần cuối:** 2026-09-17 ~12h — **vòng 13 xong (D86–D87): xả nhanh qua Leader, Leader đầy thì nhận rồi
+huỷ.** Vòng 12 đã commit `6c63976`. Vòng 13: build Release sạch (11:52), `tools/kiemtra/chay.ps1` PASS, soát lỗi độc lập
+hai lần (7 + 5 điểm, đã sửa cả 12), test sống bốn lần chạy (bản cuối 29 món / 16,8 s, 0 lần khoá) — commit + push theo
+lời user ở vòng 12.
 
 ## Đang chờ user
 
-1. Xác nhận / bác **D52–D85** (bảng cuối `docs/TEST_2CHANG.md`). Thêm vào giao diện, cần duyệt: khung *Đơn đang soạn*
-   (D75), ô *Khu giao* (D79), ô *Gom đồ* ở Cài đặt → Kho (D81), ô *Chi tiết (kỹ thuật)* trên khung log (D83).
-2. Chạy app bản mới: mục **"Còn lại cho bạn"** trong `docs/TEST_2CHANG.md` (thêm: cửa xả bằng acc thật, log, gom).
+1. Xác nhận / bác **D52–D87** (bảng cuối `docs/TEST_2CHANG.md`). D82a (người chơi giao thẳng vào clone) đã bỏ, thay bằng
+   D86. Thêm vào giao diện, cần duyệt: khung *Đơn đang soạn* (D75), ô *Khu giao* (D79), ô *Gom đồ* ở Cài đặt → Kho (D81),
+   ô *Chi tiết (kỹ thuật)* trên khung log (D83).
+2. Chạy app bản mới: mục **"Còn lại cho bạn"** trong `docs/TEST_2CHANG.md` (xả nhanh bằng acc thật, log, gom).
 3. Cho biết **lienminhfc** có phải user không (đưa 5 món 456 cho `tungkhodo9` lúc 16/09 23:50).
 4. Ảnh "Sao k check ruong nhi?" (02:1x) có phải chụp trên **máy khác / VPS** không — nếu có: máy đó cần cài đặt kho
-   đầy đủ (Chủ kho, kệ, gói…) hoặc chép `Data\Kho\Mặc định.txt` sang; không chạy hai máy cùng bộ acc.
-5. **Lỗi "bay" ở NSOBAOTATL / NSOLITEPRO** (D77): chưa mang sang. Sửa NSOBAOTATL bị hệ thống chặn (repo khác, cần user
-   cho phép rõ); NSOLITEPRO đang có ~1.200 dòng chưa commit của phiên khác (có chính `KeepAliveController.cs`) → chờ user
-   quyết. Bản sửa: `Nudge` của NSOKHODO (bỏ nhánh `DangGiaoDich` vì hai tool kia không giao dịch).
+   đầy đủ hoặc chép `Data\Kho\Mặc định.txt` sang; không chạy hai máy cùng bộ acc.
+5. **Lỗi "bay" ở NSOBAOTATL / NSOLITEPRO** (D77): chưa mang sang (NSOBAOTATL: hệ thống chặn sửa repo khác, cần user cho
+   phép rõ; NSOLITEPRO: ~1.200 dòng chưa commit của phiên khác, có chính `KeepAliveController.cs`).
 6. Cân nhắc **cài Khu phụ** và **đổi khu chính khỏi khu 0** (M12, M20).
 
-## Vòng 12 — đã làm (chi tiết `docs/WORKLOG.md` 17/09 9h30)
+## Vòng 13 — đã làm (chi tiết `docs/WORKLOG.md` 17/09 10h45)
 
 | Việc | Quyết định | Kiểm chứng |
 |---|---|---|
-| Cả kho đứng im khi khu chính −1 | D85 hộp thoại khi Chạy + ô đỏ | build + đọc code (hộp thoại chưa chụp) |
-| Thú cưỡi trong rương có thể đọc lệch | D80 (byte đúng, khoá món bỏ cấp thú cưỡi) | đối chiếu client 251; KiemKho |
-| Gom đồ xếp chồng về một nick | D81 | sống: 10 loại / 1 giao dịch; KiemKho |
-| Xả nhiều đồ, Leader "không dọn" | D82 (cửa xả + 2 lỗi) | sống: tự mở, xoay vòng, `xa` / `xa xong`, Leader dọn khi Chủ kho đứng cạnh; KiemKho |
-| Log khó đọc | D83 | sống (`[SK]`); ảnh khung log hai chế độ |
-| Lệnh khu riêng, hàng trên Leader → "kho không có" | D84 | sống 20/20 trong 29 s; KiemKho |
-| Gỡ kẹt (D78) với bản cuối | — | sống: tungkhodo8 kẹt thật → 11 s |
+| Người chơi chỉ giao cho Leader thì sao; clone nên tự lấy từ Leader | D86 xả nhanh (thay D82a) | sống: 29 món / 3 lượt liền 17,3 s; KiemKho |
+| Leader đầy từ chối → người chơi khoá 30 s (đo M28) | D87 nhận rồi huỷ | sống: 0 lần khoá; KiemKho |
+| Mời trúng người đang giao dịch → trước chờ 31 s | mời lại sau 3 s (M27) | sống (harness); KiemKho |
+| Clone đứng mép tầng (x = 335 Làng Tone) → "quá xa" | chỗ đứng theo cờ đất ô bản đồ (M29) | sống: lần 3 không còn "quá xa"; KiemKho |
 
 ## Test sống — cách chạy lại
 
 `powershell -ExecutionPolicy Bypass -File tools\kiemtra\song.ps1 -ChuanBi`, rồi `-Kho -Bo "tungkhodo9,tungnv2"` và
-`-Nguoi -Acc tungkhodo9` (acc thứ hai: `-Nguoi -Acc tungkhodo8 -Lenh lenh-p2.txt` sau khi `nha tungkhodo8`).
-**Luôn bỏ `tungnv2`** (Leader thật của user). Harness: `cfg ChuKho tungkhodo9` để acc người chơi ra lệnh chat
-(cài đặt harness hiện đã lưu ChuKho = tungkhodo9). Lệnh harness: `CLAUDE.md` mục "Test sống".
+`-Nguoi -Acc tungkhodo9 -Lenh lenh-a.txt`. **Kiểm app của user có đang chạy không trước khi đăng nhập acc** (dùng chung
+bộ acc). Harness: `cfg ChuKho tungkhodo9` (đã lưu), `cfg BatGomChong 0` khi test xả. Nạp liên tục: script
+`nap_lien.py` trong scratchpad phiên 17/09 (gửi `nap tungkhodo het`, chờ `PHIEN KET THUC`, bị huỷ thì mời lại sau 3 s).
 
-Lúc dừng (10:31): mọi tiến trình test đã tắt; `tungkhodo9` rỗng túi; `tungkhodo8` đã nhận lại vào kho; Leader harness
-(`tungkhodo`) còn 1 viên đá trong túi + 24 món trong rương (vẫn là đồ kho).
+Lúc dừng (11:56): mọi tiến trình test đã tắt; `tungkhodo9` rỗng túi; túi Leader harness (`tungkhodo`) trống.
 
 ## Giới hạn đã biết (đã ghi trong `TEST_2CHANG.md`)
 
+- Xả nhanh: lượt nạp đầu mở đợt, clone cần ~4 s để tới → nạp dồn dập thì lượt thứ 3 thường bị "nhận rồi huỷ" một lần.
+  Đồ xả vào clone đứng cạnh không theo kệ (Gom gộp đồ xếp chồng sau); đồ Rác không chuyển tiếp.
 - Chưa đối chiếu túi trước/sau mỗi lần nạp (N9 "LECH").
 - `lay … cho <tên có dấu cách>` không đọc được → dùng tool.
 - `hex.log` chỉ chiều server → bot; `chat.log` chưa ghi tin khu của người khác.
 - Cột "Hạn" chỉ tham khảo (D72); thú cưỡi không phân biệt cấp (D80). Đá không xếp chồng — mỗi viên một ô.
-- Gom (D81) chỉ đồ xếp chồng; chờ khi có lệnh rút / cửa xả.
-- Cửa xả: lượt đầu có thể chậm ~30 s (server khoá lời mời 31 s sau lần mời Leader bị từ chối).
+- Gom (D81) chỉ đồ xếp chồng; chờ khi có lệnh rút / đợt xả.
+- Watchdog báo "DONG BANG: server keo ve (420,216)" khi clone vào khu hai lần ở cùng điểm — báo nhầm, chỉ là log
+  (không đăng nhập lại vì clone không tàn sát). Chưa sửa (ngoài phạm vi).
 - Tab Nhật ký đọc file trên luồng giao diện (chậm khi file log lớn) — chưa sửa.
-- Phiên bị server huỷ sau khi hai bên đồng ý (M24) không có câu chữ → vẫn xếp là "đối phương huỷ".
 
 ## Việc sau (chưa làm, chưa ưu tiên)
 

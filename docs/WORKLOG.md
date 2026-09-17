@@ -225,3 +225,49 @@ mời 1,5 s sau khi vào khu (M24) → thêm chờ 2,5 s → bản sau đạt ng
 - `XetLoiMoi` có tác dụng phụ (đánh dấu Leader "vừa có lời mời" 10 s) → ca kiểm gọi nó phải đặt lại mốc.
 - Soát lỗi bằng một agent đọc code độc lập bắt được 10 điểm mà ca kiểm của chính người viết bỏ sót (ca kiểm viết theo đúng
   giả định của code).
+
+## 2026-09-17 10h45 → 11h45 — xả nhanh qua Leader (D86), nhận rồi huỷ (D87)
+
+**Bối cảnh.** Sau vòng 12 user hỏi *"Nếu người dùng chỉ gđ vào leader thì sao?"* — MINH đọc code: cửa xả giữ 3 clone
+trống nhất, dọn kho của Leader không dùng được chúng. User: *"Clone nên tự lấy đồ từ leader thì nhanh hơn. Vì gd chỉ mất
+2-3s… Thay vì bắt người chơi gd vào clone."* User đang dùng app lúc đầu (MINH chỉ làm offline, build ra thư mục tạm),
+11:00 user tắt app, cho test.
+
+**Đo trước khi chốt (M27–M29).** Ba acc harness: mời người đang giao dịch → không khoá, 3 s sau mời lại được. Leader
+từ chối → người mời khoá 30 s (tin "moi lai sau ~5 giay" của bản cửa xả là sai); phiên mở rồi huỷ → mời lại ngay.
+Log cũ: bot↔bot 12 món 2–3 s.
+
+**Đã làm.** D86 thay D82a: clone không nhận người chơi; đợt xả gọi 2 clone đứng sát Leader, Leader chuyển tiếp từ túi
+ngay sau mỗi lượt nạp (`Viec.ChiTui`: không ra Thủ khố, không tách chồng). D87: Leader đầy → nhận rồi huỷ
+(`HuyKhiMo`, mã `HET_CHO`); phiên giao gặp câu "đang chờ hoàn thành…" → mời lại sau 3 s. Ca kiểm offline mới cho cả
+hai (KiemKho: xả nhanh, ChiTui, HuyKhiMo, chỗ đứng theo ô đất, mời lại 3 s).
+
+**Soát lỗi độc lập lần 1 — 7 điểm, đã sửa cả 7:** túi Leader toàn đồ Rác thì đợt xả chặn dọn kho mãi (nặng); đợt xả chặn
+lệnh D84 chờ hàng trong rương Leader và gỡ kẹt; `nap` huỷ lượt chuyển và bị đếm hỏng; chồng gộp → KHONG_CO_MON bị đếm
+hỏng; hạn việc clone có thể nằm trong quá khứ; chỉ nhìn Chủ kho qua mắt Leader; danh sách clone giữ mục chết / đóng đợt
+làm Leader chờ 20 s.
+
+**Test sống — ba lần chạy.**
+1. Bản đầu: nạp 3 lượt liền → lượt 3 bị từ chối, **khoá 31 s** (tổng 38 s); chuyển sang clone ở 395 đạt, clone ở 335
+   "quá xa" 4 lần.
+2. Nhận rồi huỷ: 3 lần mời cách 3 s đều tới (không khoá). Vẫn "quá xa" với clone ở 335 dù Leader dùng toạ độ chính nó
+   thấy → log có `cmd52: (335,216) -> (335,288)`: **x = 335 là mép tầng** (M29), clone rơi xuống tầng dưới.
+3. Chỗ đứng xét cờ đất của ô bản đồ (`TileEngine.HasFlag(x, y, 2)`): 29 món / 3 lượt nạp liền trong **17,3 s**, không
+   lần khoá nào, 3 lượt chuyển đều đạt, `xa xong` đạt. Dọn sạch.
+4. Bản cuối (sau soát lỗi lần 2, build 11:52): **16,8 s**, 0 lần khoá, 3 lượt chuyển đạt, không "quá xa"; log dễ đọc chỉ
+   một dòng cho lần nhận-rồi-huỷ. Dọn sạch (tungkhodo9 rỗng túi, túi Leader harness trống).
+
+**Soát lỗi độc lập lần 2 — 5 điểm, đã sửa cả 5 (có ca kiểm):**
+1. (nặng) Leader vào lại game giữa đợt không thấy clone đứng sẵn (danh sách chỉ nạp từ cmd 3) → đợt kẹt mãi. Sửa: clone
+   sẵn sàng mà Leader không thấy quá 10 s → đổi clone khác (tránh 2 phút).
+2. Mã `BI_HUY` của **phiên** (đối phương / server huỷ, M24) bị coi là trung tính → thử mãi cùng clone. Sửa: chỉ trung
+   tính khi bộ điều phối huỷ việc.
+3. `nap` (giữ cửa) + Leader hết chỗ → giữ cửa chặn cả chuyển tiếp lẫn dọn kho tới hết giờ. Sửa: bỏ giữ cửa.
+4. Mỗi lần nhận-rồi-huỷ thêm một dòng log dễ đọc; tin "mời lại sau ~3 giây" lúc clone còn đang tới. Sửa: 1 dòng / phút;
+   tin "Clone dang toi canh Leader, moi lai sau ~10 giay" khi chưa clone nào đứng xong.
+5. Leader đang chờ clone trả bớt (D78) vẫn **từ chối** Chủ kho → khoá 30 s. Sửa: nhận rồi huỷ (người lạ vẫn từ chối).
+
+**Bài học.**
+- Hỏi "nếu người dùng làm khác thì sao" lộ ra điểm yếu mà ca kiểm theo kịch bản của người viết không thấy.
+- Câu chữ báo người chơi ("mời lại sau ~5 giây") phải đo luật server trước — sai là người chơi bị khoá 30 s.
+- "Quá xa" chưa chắc do khoảng cách ngang: chỗ đứng chọn theo toạ độ phải xét tầng đất của bản đồ.

@@ -130,6 +130,7 @@ namespace NSOKHODO.Auto
                     {
                         _phien = new PhienGiaoDich(Client, VaiGiaoDich.Nhan, id, qd.TenMongDoi, qd.ChoMs, 0, 0,
                                                    null, qd.KiemTen, qd.KiemHang);
+                        _phien.HuyKhiMo = qd.HuyKhiMo;
                         _phienCuaViec = false;
                         SetActivity("Đang nhận");
                         return 0;
@@ -355,19 +356,18 @@ namespace NSOKHODO.Auto
             // Luot gom (D81) dien ra o khu cua clone, khong phai khu chinh.
             int khu = v.Khu >= 0 ? v.Khu : cfg.KhuChinh;
             if (!VeDungKhu(cfg.Map, khu, out ms)) return ms;
-            if (v.TuNguoi != null)
+            // D86: clone cho chuyen tiep dung sat canh cho Leader (trong tam moi, Leader khong phai di).
+            if ((v.DungX != 0 || v.DungY != 0) && _diToiLan < 10 && !Client.DangGiaoDich
+                && (Math.Abs(mc.Cx - v.DungX) > 20 || Math.Abs(mc.Cy - v.DungY) > CUNG_TANG_Y))
             {
-                // D82: cho Chu kho xa do thang vao clone - dung thanh hang canh cho Leader cho de tim.
-                if ((v.DungX != 0 || v.DungY != 0) && _diToiLan < 10 && !Client.DangGiaoDich
-                    && (Math.Abs(mc.Cx - v.DungX) > 20 || Math.Abs(mc.Cy - v.DungY) > CUNG_TANG_Y))
-                {
-                    _diToiLan++;
-                    _nav.CharBurstMove(v.DungX, v.DungY);
-                    return Nghi("toi cho dung cho xa", 800);
-                }
-                v.TienDo = "chờ " + v.TuNguoi + " mời giao dịch";
-                if (!Client.DangGiaoDich) Heartbeat(mc);
-                return Nghi("cho chu kho xa do", 300);
+                // Test song 17/09: di ngay khi vua vao khu (~1 giay) thi server lang le bo buoc di - bot tuong minh da
+                // toi (395) trong khi ca khu van thay no o diem vao (420). Cho vi tri on dinh nhu buoc DenGan (M24).
+                var tuLucVao = (DateTime.UtcNow - Client.VaoKhuLucUtc).TotalMilliseconds;
+                if (tuLucVao < CHO_SAU_VAO_KHU_MS) return Nghi("vua vao khu, cho roi moi toi canh Leader", (int)(CHO_SAU_VAO_KHU_MS - tuLucVao) + 50);
+                _diToiLan++;
+                v.TienDo = "tới cạnh Leader";
+                _nav.CharBurstMove(v.DungX, v.DungY);
+                return Nghi("toi cho dung canh Leader", 800);
             }
             // DUNG YEN: bot giao (Leader) se tu toi sat. Neu ca hai cung di ve phia nhau thi moi ben
             // nhay toi cho CU cua ben kia -> doi cho cho nhau mai khong gap.
@@ -385,7 +385,8 @@ namespace NSOKHODO.Auto
             switch (_buoc)
             {
                 case Buoc.BatDau:
-                    _buoc = Buoc.LayRuong;
+                    // D86: chuyen tiep chi giao phan dang o tui - khong ra Thu kho, khong tach chong.
+                    _buoc = v.ChiTui ? Buoc.SangKhu : Buoc.LayRuong;
                     _buocLuc = DateTime.UtcNow;
                     return 0;
 
@@ -439,7 +440,9 @@ namespace NSOKHODO.Auto
                         var tuLucVao = (DateTime.UtcNow - Client.VaoKhuLucUtc).TotalMilliseconds;
                         if (tuLucVao < CHO_SAU_VAO_KHU_MS) return Nghi("vua vao khu, cho vi tri on dinh", (int)(CHO_SAU_VAO_KHU_MS - tuLucVao) + 50);
                         int khuGiao = v.Khu >= 0 ? v.Khu : cfg.KhuChinh;
-                        var nguoi = dp.TimNguoi(v.NguoiNhan, khuGiao);
+                        // Toa do theo MAT CHINH acc giao (server phat cho no): bot nhan tu biet vi tri "lac quan" -
+                        // buoc di bi server bo thi Leader lai sat cho sai, moi mai "qua xa" (test song 17/09).
+                        var nguoi = dp.TimNguoi(v.NguoiNhan, khuGiao, Client);
                         if (nguoi == null)
                         {
                             v.TienDo = "chưa thấy " + v.NguoiNhan;
@@ -480,7 +483,14 @@ namespace NSOKHODO.Auto
                     {
                         if (v.TongConLai <= 0 && v.Xu <= 0) { KetThucViec(dp, true, null, null); return 200; }
                         byte[] thu = ChonO(mc, v);
-                        if ((thu.Length == 0 && v.Xu <= 0) || NenLayThem(mc, v, thu.Length))
+                        if (v.ChiTui && thu.Length == 0 && v.Xu <= 0)
+                        {
+                            // Tui doi tu luc giao viec (nguoi nap them lam chong gop lai...): giao duoc phan nao thi xong phan do.
+                            bool coGiao = v.Dong.Exists(d => d.DaGiao > 0);
+                            KetThucViec(dp, coGiao, coGiao ? null : MaLoiViec.KHONG_CO_MON, coGiao ? null : "tui khong con mon cua luot");
+                            return 200;
+                        }
+                        if (!v.ChiTui && ((thu.Length == 0 && v.Xu <= 0) || NenLayThem(mc, v, thu.Length)))
                         {
                             // Het mon giao duoc trong tui (luot truoc da giao / sub 115 dung lai tui), hoac tui
                             // vua trong ra ma ruong con hang -> quay ve Thu kho lay luot tiep.

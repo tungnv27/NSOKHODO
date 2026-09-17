@@ -229,7 +229,7 @@ namespace NSOKHODO.UI
             _chkBatDon = OTick(h, ref y, "Dọn kho: Leader chuyển đồ sang clone", v => _cfg.BatDonKho = v);
             _chkBatCat = OTick(h, ref y, "Cất / đọc rương (Leader và clone)", v => _cfg.BatCatRuong = v);
             _chkBatGom = OTick(h, ref y, "Gom đồ xếp chồng rải nhiều clone về một nick", v => _cfg.BatGomChong = v,
-                "chạy khi kho rảnh (không có lệnh rút, không mở cửa xả)");
+                "chạy khi kho rảnh (không có lệnh rút, không đang xả nhanh)");
             _chkBatXu = OTick(h, ref y, "Dồn xu từ Leader sang clone", v => _cfg.BatDonXu = v);
             _chkBatLenh = OTick(h, ref y, "Lệnh chat của Chủ kho", v => _cfg.BatLenhChat = v);
             _chkBatTheo = OTick(h, ref y, "Theo dõi món", v => _cfg.BatTheoDoi = v);

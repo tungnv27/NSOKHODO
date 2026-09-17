@@ -21,6 +21,8 @@ namespace NSOKHODO.Kho
         public const string MAT_KET_NOI = "MAT_KET_NOI";
         /// <summary>Server bao "Khoảng cách quá xa không thể giao dịch" (test song 16/09) - lai gan roi moi lai.</summary>
         public const string QUA_XA = "QUA_XA";
+        /// <summary>D87: Leader het cho - nhan loi moi roi huy ngay khi khung mo (tu choi thi nguoi moi bi khoa 30 giay, M28).</summary>
+        public const string HET_CHO = "HET_CHO";
 
         // ---- Cau chu server (test song / test tay 16/09, da bo dau + chu thuong qua ChuVan.ChuanHoa) ----
         /// <summary>Nguoi nhan vao game chua toi ~1 phut: server tu choi ngay, KHONG chuyen loi moi ("X do not accept.").</summary>
@@ -28,6 +30,11 @@ namespace NSOKHODO.Kho
         public const string TIN_QUA_XA = "khoang cach qua xa";
         /// <summary>Anh user gui 16/09: "Đối phương không đủ ô trống để chứa vật phẩm giao dịch".</summary>
         public const string TIN_THIEU_O = "khong du o trong";
+        /// <summary>
+        /// Moi nguoi dang giao dich voi nguoi khac: "Người chơi đang chờ hoàn thành một giao dịch khác." - loi moi khong
+        /// toi, va KHONG bi khoa 31 giay: moi lai sau 3 giay van toi (test song 17/09, M27).
+        /// </summary>
+        public const string TIN_DANG_BAN = "dang cho hoan thanh mot giao dich khac";
     }
 
     public sealed class KetQuaGiaoDich
@@ -155,6 +162,12 @@ namespace NSOKHODO.Kho
         /// <summary>Yeu cau huy tu ben ngoai (Chu kho `nap`, lenh bi huy). An toan goi tu moi luong.</summary>
         public void YeuCauHuy(string lyDo) { _yeuCauHuy = lyDo ?? "bi huy"; }
 
+        /// <summary>
+        /// D87 (vai nhan): khac null = khung vua mo la huy ngay voi ly do nay (ma HET_CHO). Nhan roi huy thay cho tu
+        /// choi: loi moi bi tu choi khoa nguoi moi 30 giay, phien da mo roi huy thi moi lai duoc ngay (M28).
+        /// </summary>
+        public string HuyKhiMo { get; set; }
+
         /// <summary>Lam mot buoc. Tra ve so ms nen ngu truoc lan goi sau.</summary>
         public int Tick()
         {
@@ -210,9 +223,11 @@ namespace NSOKHODO.Kho
         }
 
         private DateTime _moiLuc;
-        private bool _daXetTuChoi;
+        private bool _daXetTuChoi, _daXetBan;
         /// <summary>Server tu choi (khong chuyen loi moi) thi khong bi khoa 31 giay - test song 16/09: moi lai sau 17 giay van co tra loi.</summary>
         private const int MOI_LAI_SAU_TU_CHOI_MS = 10000;
+        /// <summary>Doi phuong dang giao dich voi nguoi khac (M27): phien bot - bot chi 2-3 giay.</summary>
+        private const int MOI_LAI_KHI_BAN_MS = 3000;
 
         /// <summary>Vai giao: doc tin chu server tu lan moi gan nhat. true = da ket thuc phien.</summary>
         private bool XetTinSauMoi(DateTime now)
@@ -233,6 +248,13 @@ namespace NSOKHODO.Kho
                 Log("Server chua cho moi " + (_tenMongDoi ?? ("id " + _dpId)) + " (moi vao game?) - moi lai sau "
                     + MOI_LAI_SAU_TU_CHOI_MS / 1000 + "s");
             }
+            if (!_daXetBan && tin.Contains(MaLoiGiaoDich.TIN_DANG_BAN))
+            {
+                _daXetBan = true;
+                var som = now.AddMilliseconds(MOI_LAI_KHI_BAN_MS);
+                if (_moiLaiLuc > som) _moiLaiLuc = som;
+                Log((_tenMongDoi ?? ("id " + _dpId)) + " dang giao dich voi nguoi khac - moi lai sau " + MOI_LAI_KHI_BAN_MS / 1000 + "s");
+            }
             return false;
         }
 
@@ -249,6 +271,11 @@ namespace NSOKHODO.Kho
                 if (loiTen != null)
                 {
                     KetThucPhien(false, MaLoiGiaoDich.SAI_DOI_PHUONG, loiTen, true);
+                    return;
+                }
+                if (_vai == VaiGiaoDich.Nhan && HuyKhiMo != null)
+                {
+                    KetThucPhien(false, MaLoiGiaoDich.HET_CHO, HuyKhiMo, true);
                     return;
                 }
 
@@ -301,6 +328,7 @@ namespace NSOKHODO.Kho
                 _c.TradeSvc.SendInvite(_dpId);
                 _moiLuc = now;
                 _daXetTuChoi = false;
+                _daXetBan = false;
                 _moiLaiLuc = now.AddMilliseconds(_moiLaiMs);
                 Log("Moi lai " + (_tenMongDoi ?? ("id " + _dpId)));
             }
