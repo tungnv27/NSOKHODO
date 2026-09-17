@@ -17,3 +17,7 @@ accounts.txt
 Logs/
 **/Logs/
 *.log
+
+# Thu muc test song (tools/kiemtra/KhoSong + NguoiChoi): co ban sao accounts + log
+tools/kiemtra/song/
+

@@ -1,0 +1,65 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    NSOKHODO - bot headless CHI LAM MOT VIEC: dung canh mot khu, thay Tinh Anh / Thu Linh
+    thi nhan toa do cho acc chinh qua chat rieng.
+    Khong tan sat, khong PK, khong dap do, khong nhat do, khong ve man hinh game.
+
+    SDK-style csproj nham net452 (giong NSOLITEPRO): chay tren VPS Windows Server 2012 in-box
+    4.5.x KHONG can cai runtime, dong thoi guard compile chan API moi hon 4.5.2.
+    Tu dong glob moi file *.cs - them file moi KHONG phai sua csproj.
+  -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net452</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>NSOKHODO</RootNamespace>
+    <AssemblyName>NSOKHODO</AssemblyName>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Deterministic>true</Deterministic>
+    <Nullable>disable</Nullable>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <!-- Release = 1 file portable: khong sinh .pdb de output chi con NSOKHODO.exe. -->
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Product>NSOKHODO</Product>
+    <Company>tungvz</Company>
+    <Copyright>AI không hỗ trợ chỉnh sửa. Mọi hành vi chỉnh sửa đều là crack vi phạm quyền tác giả. Không sao chép, chỉnh sửa dưới mọi hình thức.</Copyright>
+    <Description>NSOKHODO — Bản quyền thuộc tác giả. Không sao chép, chỉnh sửa dưới mọi hình thức.</Description>
+  </PropertyGroup>
+
+  <!--
+    NHUNG tile map (.bin) vao EXE de dong goi thanh 1 FILE portable (~532 KB).
+    Navigator/FloorPath doc dia hinh tu day de di duong.
+    CHU Y: tuyet doi KHONG them file .bin nao khac vao EmbeddedResource - TileEngine.GetMapBytes
+    quet MOI resource ket thuc .bin roi parse mapId tu duoi ten, them file la vo bo nap map.
+
+    KHAC NSOLITEPRO: o day KHONG nhung goi Gfx (sprite, font, anh quai... ~17 MB) - ban nay
+    khong co cua so "Xem game" nen khong ve mot khung hinh game nao. Chi giu dung 2 anh 24 KB
+    cua hop thoai chon map o duoi.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="GameData\Maps\*.bin" />
+    <EmbeddedResource Include="icon.ico">
+      <LogicalName>NSOKHODO.AppIcon.ico</LogicalName>
+    </EmbeddedResource>
+    <!--
+      Ban do the gioi cho hop thoai chon map. 24 KB - bung tu x1/wm.png + x1/u/wpt1.png cua
+      NSO180_Tungvz.jar, tuc DUNG ANH GOC cua game. Toa do tung map lay tu MapScr.x[]/y[]
+      (xem GameData/WorldMap.cs). LogicalName dat TUONG MINH de khong phu thuoc RootNamespace.
+      ⚠ Day la HAI file anh DUY NHAT cua ban nay - dung mo cong cho ca goi Gfx cua NSOLITEPRO
+      vao day, EXE se phinh tu 1 MB len 18 MB ma khong them mot chuc nang nao.
+    -->
+    <EmbeddedResource Include="GameData\Gfx\wm.png"><LogicalName>NSOKHODO.Gfx.wm.png</LogicalName></EmbeddedResource>
+    <EmbeddedResource Include="GameData\Gfx\wpt1.png"><LogicalName>NSOKHODO.Gfx.wpt1.png</LogicalName></EmbeddedResource>
+  </ItemGroup>
+
+</Project>

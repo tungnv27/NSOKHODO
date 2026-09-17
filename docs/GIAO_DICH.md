@@ -192,7 +192,7 @@ Câu chữ chính xác của các thông báo trên **chưa có** — bot gom �
 | Mở rương | `40 {short 5}` rồi `29 {…}` → chờ `30 {byte 4, …}` | — | `DanhVongMode.MoUiRuong` :1513 (NSOBAOTATL đã bỏ) |
 | Túi → rương | `17 {byte bagIdx}` | `17 {ubyte bagIdx, ubyte boxIdx}` (ô đích có sẵn cùng món thì cộng dồn) | `ItemService.cs:170`; `ItemHandler.cs:808` |
 | Rương → túi | `16 {byte boxIdx}` | `16 {ubyte boxIdx, ubyte bagIdx}` | `ItemService.cs:163`; `ItemHandler.cs:838` |
-| Tách chồng | `22 {byte slot}` rồi `-28 {sub -85, byte slot, int qty}` | túi cập nhật (8/7) | `ItemService.SendSplitItem` :43, `SendSplitConfirm` :51 |
+| Tách chồng | **chỉ** `-28 {sub -85, byte slot, int qty}`, 1 ≤ qty < số trong ô | túi cập nhật (8/7) | `ItemService.SendSplitStack` (NSOKHODO). ⚠ Dòng cũ ghi "`22 {byte slot}` rồi −85" là **SAI**: cmd 22 là **tách trang bị** (SPEC D53) — đã gỡ khỏi `ItemService` |
 
 **Lưu ý:**
 - **NPC mở rương là template 5.** Nguồn: mod 180 `AutoDanhVong.java:990-996` và `LITE\Auto\DanhVong\DanhVongConst.cs:46`.
@@ -204,7 +204,7 @@ Câu chữ chính xác của các thông báo trên **chưa có** — bot gom �
 - Vì không đi qua menu, **không còn phải lo** gói menu 29 dài khác nhau giữa hai bản (180: 3 byte; 251: 4 byte).
 - **Số ô rương** do server gửi trong gói 31; client không ghi cứng con số nào.
 - **Rương theo từng nhân vật**, không chia sẻ giữa các tài khoản [SUY].
-- **Tách chồng:** NSOCHIP Auto Sell chỉ gửi −85; còn `LITE` gửi hai bước theo 251. Chọn cách nào thì **đo M8** rồi quyết.
+- **Tách chồng:** NSOCHIP Auto Sell chỉ gửi −85 → **NSOKHODO chỉ gửi −85** (D53). Bước "22" mà `LITE` gửi trước là lệnh tách **trang bị**, không thuộc việc tách chồng; M8 chỉ còn kiểm −85 chạy thật.
 - **Sau khi tách không có gói nào nói phần tách nằm ở ô nào.** Phải so túi trước/sau; NSOCHIP làm y như vậy.
 
 ## 7. Mẫu có sẵn
@@ -270,24 +270,30 @@ Kế hoạch đo: `SPEC.md` §13 (P0a test tay — ✅ xong 2026-09-16; P0b đo 
 
 | Mã | Câu hỏi | Kết quả |
 |---|---|---|
-| M1 | Khuôn gói 37/45/46/58/8/9 với `clientType 1 / "1.8.0"` | — (P0b) |
-| M2 | Server có gửi gói xoá ô cho bên giao không | — (P0b) |
+| M1 | Khuôn gói 37/45/46/58/8/9 với `clientType 1 / "1.8.0"` | ✅ Khớp §3 [CHẠY 16/09]. Bên nhận: `45` (xu, n, n × {tpl short, [cấp], hạn, sl short}), `46`, rồi mỗi món một gói `8` (`ô, tpl, khoá, hạn, [sl short nếu xếp chồng]`), `58`, `57`. Ví dụ: `8 len=7 00 03 14 00 00 00 6A` = ô 0, Nham Thạch (788) × 106 |
+| M2 | Server có gửi gói xoá ô cho bên giao không | ✅ **Không.** Bên giao chỉ nhận `45` (đối phương khoá 0 món), `46`, `58`, `57` [CHẠY 16/09] → bot phải tự xoá ô đã đưa (`PhienGiaoDich.XoaODaDua`) |
 | M3 | Đồ có hạn dùng giao dịch được không | ✅ **Được** [TAY, T2] |
 | M4 | Bên nhận thiếu ô → server huỷ phiên hay mất đồ | ✅ **Server đóng phiên ngay** khi bên giao khoá vượt số ô trống; **không mất đồ**; popup "không đủ hành trang" lúc có lúc không [TAY, T3] |
-| M5 | Khoảng cách tối đa để mời | — (P0b) |
-| M6 | Mời liên tục có bị chặn không; phải chờ bao lâu | ✅ Khoá **31 s**; phiên xong thì mời lại được **ngay**; người đang giao dịch → "đối phương đang có giao dịch khác" [TAY, T4, T5] |
-| M7 | Rương ở map 22: NPC, số ô, có cần đứng gần NPC không | ◐ NPC **Thủ khố** (= NPC 5 theo MODGAME), **phải đứng sát**; mở không cần menu (§6) [TAY, T8]. **Số ô: chưa có** → M7b (P0b) |
-| M8 | Tách chồng: một bước (−85) hay hai bước (22 + −85) | — (P0b) |
-| M9 | Gửi 46 sau 1,5 s có bị server từ chối không | — (P0b) |
+| M5 | Khoảng cách tối đa để mời | ◐ **Server có kiểm:** mời từ xa ~1.100 px → *"Khoảng cách quá xa không thể giao dịch"*, lời mời không tới [CHẠY 16/09]. Ngưỡng chưa đo; đứng cách ≤ 40 px thì luôn được. Bot gặp câu này thì lại sát rồi mời lại (≤ 3 lần) |
+| M6 | Mời liên tục có bị chặn không; phải chờ bao lâu | ✅ Khoá **31 s**; phiên xong thì mời lại được **ngay**; người đang giao dịch → "đối phương đang có giao dịch khác" [TAY, T4, T5]. Mời lại trong 30 s (sau một lời mời **đã tới**) → *"Bạn đã gởi yêu cầu giao dịch. Sau 30 giây nữa mới được gởi tiếp"*; lời mời **bị từ chối** (M19) thì không bị khoá [CHẠY 16/09] |
+| M7 | Rương ở map 22: NPC, số ô, có cần đứng gần NPC không | ✅ NPC **Thủ khố** (= NPC 5 theo MODGAME), **phải đứng sát**; mở không cần menu (§6) [TAY, T8]. **Nhân vật cấp 1: rương 30 ô** (gói `31`: `… 1E` + 30 ô) [CHẠY 16/09]. Trả lời chuyển món: cất `17 {ô túi, ô rương}`, lấy `16 {ô rương, ô túi}` |
+| M8 | Tách chồng bằng `−28/−85` có chạy không; phần tách rơi vào ô nào. *(Câu cũ "hay hai bước 22 + −85" SAI: cmd 22 là **tách trang bị**, phá món đã nâng cấp — SPEC D53. Bot không bao giờ gửi cmd 22.)* | ✅ **Chạy.** Tách 10 từ chồng 106 ở ô 0 → phần tách nằm ở **ô trống đầu tiên** (ô 1), kết quả về trong < 0,2 s [CHẠY 16/09] |
+| M9 | Gửi 46 sau 1,5 s có bị server từ chối không | ✅ **Không** — mọi phiên (nạp, dọn, rút) đều xong ~0,2 s sau 46 [CHẠY 16/09] |
 | M10 | Chat riêng: độ dài tối đa, có cần kết bạn không, ngưỡng khoá chat | ◐ **Không cần kết bạn**; **phải gửi không dấu** [TAY, T10]. **Độ dài tối đa: chưa có** → M10b (P0b) |
 | M11 | Cấp độ tối thiểu để giao dịch | ✅ **Cấp 1 giao dịch được** [TAY, T1] |
-| M12 | Khoảng 12 acc trong một khu có bị đẩy sang khu khác không | — (P0b) |
-| M13 | Tự đánh (gói 61, charId của mình) ở làng: server phản hồi gì; đứng 2 giờ có rớt không | — (P0b) |
+| M12 | Khoảng 12 acc trong một khu có bị đẩy sang khu khác không | ✅ **Không** — 11 acc của kho + 3–6 người lạ cùng ở khu 0 Làng Tone, không ai bị đẩy [CHẠY 16/09]. Nhưng **khu đầy thì không vào được**: lúc 18:56 các acc đăng nhập bị xếp vào khu 21–22 (khu thấp đã đầy) |
+| M13 | Tự đánh (gói 61, charId của mình) ở làng: server phản hồi gì; đứng 2 giờ có rớt không | ◐ Nhân vật **không cầm vũ khí** → server đáp *"Vũ khí không thích hợp"* mỗi 60 s (không có đòn nào). Vẫn là luồng hai chiều nên giữ được kết nối: đứng ~1 giờ không rớt [CHẠY 16/09]. **Chưa thử 2 giờ** |
 | M14 | Chat cộng đồng (−23) 5 s/lần: có bị chặn hoặc khoá không | ◐ Có tem `@NNN` thì **không bị** (thử 3 phút) [TAY, T11]. Chưa thử dài |
 | M15 | Đổi khu ở map 22: có NPC 13 không | ✅ **Có NPC 13** [TAY, T9]. Hồi chiêu 10 s đếm từ lúc tới khu mới (user) |
 | M16 | Trần xu mỗi nhân vật | ✅ **2 tỷ** [TAY, T14]. Nhận vượt trần thì sao: chưa thử (bot kiểm trước để không bao giờ vượt) |
 | **M17** | **Món nhận qua giao dịch có bị chuyển thành KHOÁ không** | ✅ **Không** — món chỉ khoá khi **đem ra dùng** [TAY, T0] |
-| M18 | Nguyên văn các câu server báo (không đủ hành trang, đang có giao dịch khác, mời liên tục) | — (P0b, lấy từ gói −24/−25/−26/53) |
+| M18 | Nguyên văn các câu server báo (không đủ hành trang, đang có giao dịch khác, mời liên tục) | ✅ Thiếu ô (bên giao thấy): *"Đối phương không đủ ô trống để chứa vật phẩm giao dịch"* [TAY, ảnh user 16/09]. Mời lại sớm: *"Bạn đã gởi yêu cầu giao dịch. Sau 30 giây nữa mới được gởi tiếp"*. Người nhận mới vào game: *"&lt;tên&gt; do not accept."* (tiếng Anh). Xa: *"Khoảng cách quá xa không thể giao dịch"*. Vào lại quá sớm: *"Bạn chỉ có thể vào lại game sau N giây nữa"* (N ≈ 22 sau khi vừa thoát) [CHẠY 16/09]. "Đang có giao dịch khác": chưa bắt được nguyên văn |
+| **M19** | **Mời người vừa vào game** | ✅ Người **nhận** vào game chưa tới **~55–60 s** → server trả *"&lt;tên&gt; do not accept."* ngay, **không chuyển** lời mời (đo: +46 s, +52 s bị chặn; +58 s tới). Người **mời** vừa vào game (+1 s, +19 s) **không** bị chặn. **Đổi khu không** bị chặn (+6 s sau khi tới khu mới vẫn nhận) [CHẠY 16/09]. → Bộ điều phối chờ clone vào game ≥ 90 s mới cho nhận hàng; phiên giao gặp câu này thì mời lại sau 10 s |
+| **M20** | **Khu lúc đăng nhập** | ✅ Server **tự xếp khu** lúc vào game (khu thấp nhất còn chỗ), **không** giữ khu lúc thoát: 16/09 18:56 vào khu 21–22, 20:17 cả 9 acc vào khu 0 [CHẠY]. → Clone phải tự về khu phụ sau mỗi lần đăng nhập |
+| **M21** | **Toạ độ người khác nhìn thấy** | ✅ Acc đứng y=216 nhưng người khác thấy y=164 (= 216 − 52, đúng bước nhảy chống AFK) [CHẠY 16/09]. Nguyên nhân + cách chữa: M23. → Khi tới sát người nhận, bot giữ độ cao của mình nếu lệch ≤ 60 px (D67) |
+| **M22** | **Cờ "có hạn" của cùng một món** | ✅ **Không ổn định giữa các gói.** Người lạ đưa 5 Tử tinh thạch trung cấp (456): khung giao dịch (37/45) và gói `8` ghi **4 món "không hạn" + 1 "có hạn"**; acc nhận **đăng nhập lại** → danh sách túi ghi **cả 5 "có hạn"**. Kho đọc mới (túi lúc đăng nhập + gói 31) thì 61/61 món 456 đều "có hạn", trong khi app của user 4 phút trước ghi 47 món "không hạn". Món clone giao đi (đã "có hạn" từ danh sách) thì gói giao dịch vẫn ghi "có hạn" [CHẠY 17/09]. → Cờ hạn **không thuộc khoá món** (D72) |
+| **M23** | **Server xử lý gói di chuyển (cmd 1) thế nào** | ✅ Đo bằng hai acc (một acc gửi, một acc đứng xem toạ độ qua cmd 1) [CHẠY 17/09, Làng Tone khu 0, đứng y=216]: **(a)** một gói lệch đơn lẻ (y−52, hoặc x±24) → người xem thấy ngay, **~1,3 s sau server phát lại vị trí cũ** (không nhận). **(b)** chuỗi chống AFK 4 gói cách 250 ms (y−10, −52, −40, 0) → người xem thấy 216 rồi **~1,2 s sau bật về 164 và giữ luôn**; người vào khu sau cũng thấy 164 (4/4 lần). Gửi lại 216 **một gói** sau đó (7 s, hay 1,5 s) → **vẫn 164**. **(c)** đi bằng `CharBurstMove` (gói đích gửi **3 lần**, lần 1–2 cách 20 ms) → server nhận, kể cả khi đang kẹt 164. **(d)** chuỗi 4 gói + **3 gói về chỗ cũ** (sau 50 ms hoặc 400 ms) → đứng đúng 216 (5/5, kể cả đang kẹt); Leader chạy bản sửa trên kho thật: 3/3 nhịp đúng. Server **không** gửi gói kéo vị trí nào cho chính acc gửi. → D77 |
+| **M24** | **Mời ngay sau khi đổi khu** | ✅ Clone vào khu 5 lúc 18.1 s, mời lúc 19.6 s (1,5 s sau) theo toạ độ người nhận nó đang thấy (điểm vào 420) trong khi người nhận đã đi tới 300: khung mở, hai bên khoá, **cùng đồng ý (46) rồi server huỷ** (cả hai nhận huỷ, không kèm câu chữ). Lần mời sau server báo *"Khoảng cách quá xa"*. Chờ **2,5 s** sau khi vào khu rồi mới lấy toạ độ → mời lúc +3,3 s, đạt ngay lần đầu [CHẠY 17/09]. → D79. Ghi thêm: phiên bị huỷ sau 46 **không** có câu báo "quá xa" — dễ bị xếp nhầm là "đối phương huỷ" |
 
 ## 10. Sai sót tài liệu đã phát hiện (chưa sửa ở nguồn)
 
