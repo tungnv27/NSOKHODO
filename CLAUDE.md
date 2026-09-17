@@ -10,7 +10,7 @@ Tool biết tổng kho, nhận lệnh rút (tool hoặc chat), tự chọn acc �
 chồng rồi giao thẳng cho người nhận.
 
 > **Đầu mỗi session:** đọc `docs/STATUS.md` trước, rồi tóm tắt ngắn cho user "đang ở đâu / làm gì
-> tiếp" trước khi viết code. Thiết kế đầy đủ: `docs/SPEC.md` (quyết định D1–D87).
+> tiếp" trước khi viết code. Thiết kế đầy đủ: `docs/SPEC.md` (quyết định D1–D88).
 
 ## Phạm vi — ranh giới cứng
 
@@ -38,6 +38,8 @@ không giao được nữa. Vì vậy:
 - **cmd 22 là "tách TRANG BỊ"** (phá món đã nâng cấp), **không phải** tách chồng. Tách chồng chỉ
   dùng `-28/-85` (D53).
 - `Navigator.FindKdlSlot()` luôn −1: **không** đổi khu bằng "Khả di lệnh" (D57).
+- **Một ô giao dịch ≤ 29.999** (`TradeHandler.MAX_SO_LUONG`, M30) trong khi chồng trong túi / rương gộp tới 32.000.
+  Đường giao mới nào cũng phải bỏ qua hoặc tách chồng lớn (D88).
 - Mọi thay đổi đụng tới túi / rương thật → **thêm ca vào `tools/kiemtra/KiemKho.cs` trước**.
 
 ## Quan hệ với NSOBAOTATL / NSOLITEPRO
@@ -159,8 +161,8 @@ KhoDieuPhoi (1 luồng, nhịp 1 s) <── LayViec / XetLoiMoi / TimNguoi ─�
 | File | Nội dung |
 |---|---|
 | `docs/STATUS.md` | **ảnh chụp trạng thái — ĐỌC ĐẦU TIÊN** |
-| `docs/SPEC.md` | thiết kế đã chốt, quyết định D1–D87, lộ trình, rủi ro |
-| `docs/GIAO_DICH.md` | hợp đồng giao thức giao dịch / rương / tách chồng + bảng đo M1–M29 |
+| `docs/SPEC.md` | thiết kế đã chốt, quyết định D1–D88, lộ trình, rủi ro |
+| `docs/GIAO_DICH.md` | hợp đồng giao thức giao dịch / rương / tách chồng + bảng đo M1–M30 |
 | `docs/TEST_TAY.md` | kết quả test tay trên server chính (T0–T14) |
 | `docs/TEST_2CHANG.md` | checklist buổi test 2 chặng |
 | `docs/NGUON_GOC.md` | lấy gì từ đâu, sửa gì trong lõi |

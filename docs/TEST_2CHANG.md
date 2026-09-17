@@ -275,6 +275,7 @@ Chi tiết ở SPEC §2 "Quyết định vòng 9". Tóm tắt:
 | D85 | Khu chính chưa cài → hộp thoại khi bấm Chạy + ô trạng thái đỏ | |
 | D86 | **Xả nhanh**: bạn chỉ giao cho Leader; 2 clone đứng cạnh Leader, Leader chuyển sang ngay sau mỗi lượt (2–3 s). `xa` = gọi sẵn clone, `xa xong` = đã nạp xong | |
 | D87 | Leader đầy → **nhận rồi huỷ** lời mời của bạn (không từ chối → không bị khoá 30 s), nhắn mời lại sau ~3 s | |
+| D88 | Một ô giao dịch tối đa **29.999**: chồng lớn hơn tách trước (32.000 → 29.999 + 2.001, cùng một lượt); xả nhanh bỏ qua chồng đó để dọn kho thường tách | |
 
 D53 (cmd 22 là tách **trang bị**) và D57 (không bao giờ dùng Khả di lệnh để đổi khu) là **sửa sai / chặn mất đồ**, không phải lựa chọn.
 
@@ -282,6 +283,8 @@ D53 (cmd 22 là tách **trang bị**) và D57 (không bao giờ dùng Khả di l
 
 - **Chưa đối chiếu túi trước / sau** sau mỗi lần nạp (SPEC N9 "LECH"): cột `Lech` trong `giaodich.csv` để trống. Sổ kho cập nhật liên tục từ túi thật, nên lệch vẫn tự sửa ở giây sau.
 - Tên người nhận **có dấu cách** không dùng được trong `lay … cho <ten>` → ra lệnh từ tool.
+- **Chồng từ 30.000 món (D88)** mới kiểm offline; chưa test sống vì kho chưa có chồng nào lớn như vậy. Có chồng ≥ 30.000
+  thì thử `lay <id> het` và xem log có dòng `Tach chong … lay 29999/…`.
 - `hex.log` chỉ ghi chiều **server → bot**; gói bot gửi đi thì xem thứ tự trong `app.log` (`[GD giao]`, `[GD nhan]`).
 - `chat.log` ghi mọi tin riêng vào / ra và tin khu **bot gửi**; **chưa** ghi tin khu của người khác.
 - Chưa có cảnh báo riêng cho đồ có hạn: chỉ có cột "Hạn" ở Tổng kho (D72: "có" nếu có món nào được server báo

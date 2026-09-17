@@ -2580,7 +2580,8 @@ namespace NSOKHODO.Kho
             var t = So.Lay(acc);
             string viSao;
             if (!KetCung(t) || !CoTheTraBot(t, out viSao)) return false;
-            // Mon giao duoc NGAY tu tui (chong khong lon hon so con phai giao - dung luat ChonO cua mode) -> giao.
+            // Mon giao duoc NGAY tu tui (chong khong lon hon so con phai giao, khong qua MAX_SO_LUONG - dung luat ChonO
+            // cua mode) -> giao. Chong qua MAX_SO_LUONG trong tui het o thi khong tach duoc -> van phai go ket.
             var con = new Dictionary<KhoaMon, int>();
             foreach (var o in cac)
                 foreach (var p in ChepKeHoach(o))
@@ -2593,7 +2594,8 @@ namespace NSOKHODO.Kho
             foreach (var m in t.Mon)
             {
                 int c;
-                if (!m.TrongRuong && con.TryGetValue(m.Khoa, out c) && Math.Max(1, m.SoLuong) <= c) return false;
+                int sl = Math.Max(1, m.SoLuong);
+                if (!m.TrongRuong && con.TryGetValue(m.Khoa, out c) && sl <= c && sl <= Controller.TradeHandler.MAX_SO_LUONG) return false;
             }
             return true;
         }
@@ -2706,13 +2708,17 @@ namespace NSOKHODO.Kho
             return TimTrongKhu(L, x => Cfg.LaChuKho(x.Name)) != null;
         }
 
-        /// <summary>D84 + D86: lenh dang cho hang nam trong RUONG Leader (xa nhanh chi chuyen tiep do trong tui).</summary>
+        /// <summary>
+        /// D84 + D86: lenh dang cho hang ma xa nhanh KHONG chuyen tiep duoc - nam trong RUONG Leader, hoac chong qua
+        /// MAX_SO_LUONG trong tui (luot chuyen khong tach - M30).
+        /// </summary>
         private bool GapTrongRuongLeader()
         {
             var gap = LoaiCanDonGap();
             if (gap.Count == 0) return false;
             var t = So.Lay(_leaderAcc);
-            return t != null && t.Mon.Exists(m => m.TrongRuong && !m.Khoa.Khoa && gap.Contains(m.Khoa.Tpl));
+            return t != null && t.Mon.Exists(m => !m.Khoa.Khoa && gap.Contains(m.Khoa.Tpl)
+                && (m.TrongRuong || m.SoLuong > Controller.TradeHandler.MAX_SO_LUONG));
         }
 
         private void HuyDon(string lyDo, DateTime now)
@@ -2731,6 +2737,13 @@ namespace NSOKHODO.Kho
         }
 
         private string NhomCua(short tpl) { return KeHang.NhomCuaMon(tpl, BangMon.Lay(tpl), Cfg); }
+
+        /// <summary>So o mot chong chiem khi giao dich: chong qua MAX_SO_LUONG phai tach thanh nhieu o (M30).</summary>
+        private static int SoOGiao(int soLuong)
+        {
+            int toiDa = Controller.TradeHandler.MAX_SO_LUONG;
+            return Math.Max(1, (soLuong + toiDa - 1) / toiDa);
+        }
 
         private static bool LaChong(short tpl)
         {
@@ -2812,7 +2825,8 @@ namespace NSOKHODO.Kho
             // B. chuyen sang clone theo ke
             if (!Cfg.BatDonKho) return;
             bool tuRuong = t.Mon.Exists(m => m.TrongRuong && !m.Khoa.Khoa && !giu.Contains(m.Khoa));
-            bool tuTui = !tuRuong && tuiCat > 0 && (!Cfg.BatCatRuong || !ruongCho);
+            // Dang xa nhanh (buoc A bi chan) ma toi day: lenh cho chong lon trong tui Leader -> don thang tu tui.
+            bool tuTui = !tuRuong && tuiCat > 0 && (!Cfg.BatCatRuong || !ruongCho || xaChay);
             if (!tuRuong && !tuTui) return;
             var gap = LoaiCanDonGap();
             var nguon = t.Mon.Where(m => !m.Khoa.Khoa && !giu.Contains(m.Khoa))
@@ -2853,7 +2867,14 @@ namespace NSOKHODO.Kho
             }
             if (tran) Ghi(clone, "KE_TRAN", "Ke " + nhom + " het cho - don sang " + clone + " (ke " + KeHang.KeCuaAcc(clone, Cfg) + ")");
             var nd = new PhienDon { MucDich = DON, Clone = clone, CloneTen = TenNhanVat(clone), Nhom = nhom };
-            if (!LapLuotDon(nd, t, giu)) { _donNghiDen = now.AddSeconds(30); return; }
+            if (!LapLuotDon(nd, t, giu))
+            {
+                // Luot rong (vd mon dau tien la chong > MAX_SO_LUONG can 2 o ma nick chi con 1 - M30): nick nay nghi 2 phut
+                // de lan sau chon nick / mon khac, khong chon lai dung cap do mai (review 17/09).
+                _nghiNhanDon[clone] = now.AddMinutes(2);
+                _donNghiDen = now.AddSeconds(30);
+                return;
+            }
             nd.ViecClone = new Viec { Loai = LoaiViec.DoiNhan, Acc = clone, TuBotAcc = _leaderAcc, HetHan = now.AddMinutes(6) };
             if (!GiaoViec(nd.ViecClone)) return;
             _don = nd;
@@ -2904,9 +2925,11 @@ namespace NSOKHODO.Kho
             DateTime nghi;
             if (_traNghi.TryGetValue(t.Acc, out nghi) && DateTime.Now < nghi) { viSao = "vua tra bot hong, cho toi " + nghi.ToString("HH:mm"); return false; }
             var giu = Hang.KhoaDangGiuTren(t.Acc);
-            if (!t.Mon.Exists(m => !m.TrongRuong && !m.Khoa.Khoa && !giu.Contains(m.Khoa)))
+            // Cung luat voi TaoTraBot: chong qua MAX_SO_LUONG khong tach duoc trong tui het o (M30).
+            if (!t.Mon.Exists(m => !m.TrongRuong && !m.Khoa.Khoa && !giu.Contains(m.Khoa)
+                                   && m.SoLuong <= Controller.TradeHandler.MAX_SO_LUONG))
             {
-                viSao = "tui chi co mon khoa / mon dang giu cho lenh";
+                viSao = "tui chi co mon khoa / mon dang giu cho lenh / chong qua " + Controller.TradeHandler.MAX_SO_LUONG;
                 return false;
             }
             var L = LeaderClient;
@@ -2942,10 +2965,14 @@ namespace NSOKHODO.Kho
                 if (c == null || c.State != ClientState.InGame || c.DangGiaoDich || CoViec(t.Acc)) continue;
                 if (c.GameState.IsChangingMap || c.GameState.CurrentMap == null || c.GameState.CurrentMap.MapId != Cfg.Map) continue;
                 var giu = Hang.KhoaDangGiuTren(t.Acc);
-                var mon = t.Mon.Where(m => !m.TrongRuong && !m.Khoa.Khoa && !giu.Contains(m.Khoa)).OrderBy(m => m.Slot).ToList();
+                // Ket cung = tui het o -> khong tach duoc chong qua MAX_SO_LUONG (M30), khong dua chong do.
+                var mon = t.Mon.Where(m => !m.TrongRuong && !m.Khoa.Khoa && !giu.Contains(m.Khoa)
+                                           && m.SoLuong <= Controller.TradeHandler.MAX_SO_LUONG)
+                               .OrderBy(m => m.Slot).ToList();
                 if (mon.Count == 0)
                 {
-                    GhiHanChe("ketcung|" + t.Acc, 600, t.Acc, "GoKet", "Clone " + t.Acc + " ket cung (tui + ruong day) nhung tui chi co mon dang giu cho lenh - khong tra bot duoc");
+                    GhiHanChe("ketcung|" + t.Acc, 600, t.Acc, "GoKet", "Clone " + t.Acc + " ket cung (tui + ruong day) nhung tui chi co mon dang giu cho lenh"
+                        + " / chong qua " + Controller.TradeHandler.MAX_SO_LUONG + " khong tach duoc - khong tra bot duoc");
                     continue;
                 }
                 bool coLenh = giu.Count > 0;
@@ -3096,15 +3123,19 @@ namespace NSOKHODO.Kho
                 string h;
                 if (nha.TryGetValue(m.Khoa.Tpl, out h)) { if (!CungAcc(h, d.Clone)) continue; }
                 else if (NhomCua(m.Khoa.Tpl) != d.Nhom) continue;
-                if (m.TrongRuong)
+                int o = SoOGiao(m.SoLuong);
+                if (dem + o > n) continue;
+                // O trong tui Leader can dung: lay tu ruong ra (1 o) + moi lan tach chong lon (o - 1, M30).
+                int canTui = m.TrongRuong ? o : o - 1;
+                if (canTui > 0)
                 {
-                    if (tuRuong >= leader.TuiTrong) continue;
-                    tuRuong++;
+                    if (tuRuong + canTui > leader.TuiTrong) continue;
+                    tuRuong += canTui;
                 }
                 int c;
                 gop.TryGetValue(m.Khoa, out c);
                 gop[m.Khoa] = c + m.SoLuong;
-                dem++;
+                dem += o;
             }
             d.Dong.Clear();
             foreach (var kv in gop) d.Dong.Add(new DongGiao { Khoa = kv.Key, SoLuong = kv.Value });
@@ -3350,8 +3381,9 @@ namespace NSOKHODO.Kho
                     tong[m.Khoa.Tpl] = s + m.SoLuong;
                 }
             }
-            // Tran mot chong ~30.000 (so luong la short): loai qua lon gom ve mot nick van phai nhieu chong -> bo.
-            var rai = giu.Where(kv => kv.Value >= 2 && tong[kv.Key] < 30000).Select(kv => kv.Key).ToList();
+            // Mot o giao dich toi da MAX_SO_LUONG (M30; chong trong tui gop toi 32.000): loai tong vuot muc nay gom ve mot
+            // nick van phai nhieu chong -> bo. Duoi muc thi moi chong deu giao nguyen duoc, khong can tach.
+            var rai = giu.Where(kv => kv.Value >= 2 && tong[kv.Key] <= Controller.TradeHandler.MAX_SO_LUONG).Select(kv => kv.Key).ToList();
             if (rai.Count == 0) return false;
 
             foreach (var nhom in rai.GroupBy(NhomCua).OrderByDescending(x => x.Count()))
@@ -3490,7 +3522,9 @@ namespace NSOKHODO.Kho
                 var c = LayClient(t.Acc);
                 if (c == null || c.DangGiaoDich || CoViec(t.Acc) || VuaVaoGame(t.Acc)) continue;
                 // Tui khong con o nao: chi giao chong dang o tui (ruong khong lay ra duoc - xem ChongCua).
-                var mon = t.Mon.Where(m => !m.Khoa.Khoa && _gomLoai.Contains(m.Khoa.Tpl) && (t.TuiTrong >= 1 || !m.TrongRuong))
+                // Chong qua MAX_SO_LUONG (vd nick vua doc ruong sau luc ghim dot) khong gom - M30.
+                var mon = t.Mon.Where(m => !m.Khoa.Khoa && _gomLoai.Contains(m.Khoa.Tpl) && (t.TuiTrong >= 1 || !m.TrongRuong)
+                                           && m.SoLuong <= Controller.TradeHandler.MAX_SO_LUONG)
                                .OrderBy(m => m.TrongRuong).ThenBy(m => m.Slot).ToList();
                 if (mon.Count == 0) continue;
                 if (chon == null || mon.Count > monChon.Count) { chon = t; monChon = mon; }
@@ -3888,8 +3922,8 @@ namespace NSOKHODO.Kho
 
         /// <summary>
         /// D86: mon Leader chuyen tiep duoc - trong TUI (tui that, khong doi so kho), khong khoa, khong giu cho lenh,
-        /// khong thuoc ke Rac (clone dung canh khong phai ke Rac - de don kho thuong dua ve dung ke). Toi da
-        /// <paramref name="n"/> o, theo thu tu o.
+        /// khong thuoc ke Rac (clone dung canh khong phai ke Rac - de don kho thuong dua ve dung ke), khong qua
+        /// MAX_SO_LUONG (luot chuyen khong tach chong - M30; don kho thuong tach). Toi da <paramref name="n"/> o, theo thu tu o.
         /// </summary>
         private List<DongGiao> MonChuyenDuoc(NsoClient L, int n)
         {
@@ -3904,7 +3938,7 @@ namespace NSOKHODO.Kho
             foreach (var it in bag.ToArray())
             {
                 if (dem >= n) break;
-                if (it == null || it.IsEmpty || it.IsLock) continue;
+                if (it == null || it.IsEmpty || it.IsLock || it.Quantity > Controller.TradeHandler.MAX_SO_LUONG) continue;
                 var k = KhoaMon.Tu(it);
                 if (giu.Contains(k) || NhomCua(k.Tpl) == KeHang.RAC) continue;
                 int s;

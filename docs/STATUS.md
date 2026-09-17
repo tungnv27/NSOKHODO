@@ -2,23 +2,30 @@
 
 > **File này GHI ĐÈ mỗi session.** Đọc đầu tiên để biết "đang ở đâu / làm gì tiếp".
 
-**Cập nhật lần cuối:** 2026-09-17 ~12h — **vòng 13 xong (D86–D87): xả nhanh qua Leader, Leader đầy thì nhận rồi
-huỷ.** Vòng 12 đã commit `6c63976`. Vòng 13: build Release sạch (11:52), `tools/kiemtra/chay.ps1` PASS, soát lỗi độc lập
-hai lần (7 + 5 điểm, đã sửa cả 12), test sống bốn lần chạy (bản cuối 29 món / 16,8 s, 0 lần khoá) — commit + push theo
-lời user ở vòng 12.
+**Cập nhật lần cuối:** 2026-09-17 ~16h20 — **vòng 14 xong (D88): một ô giao dịch tối đa 29.999, chồng lớn tách
+trước.** Build Release sạch, `tools/kiemtra/chay.ps1` PASS (482 ca), soát lỗi độc lập (8 điểm, đã sửa cả 8). **Chưa test
+sống** (kho không có chồng nào quá 146 món). Vòng 13 (D86–D87, xả nhanh) đã commit `24c7a8d`.
 
 ## Đang chờ user
 
-1. Xác nhận / bác **D52–D87** (bảng cuối `docs/TEST_2CHANG.md`). D82a (người chơi giao thẳng vào clone) đã bỏ, thay bằng
+1. Xác nhận / bác **D52–D88** (bảng cuối `docs/TEST_2CHANG.md`). D82a (người chơi giao thẳng vào clone) đã bỏ, thay bằng
    D86. Thêm vào giao diện, cần duyệt: khung *Đơn đang soạn* (D75), ô *Khu giao* (D79), ô *Gom đồ* ở Cài đặt → Kho (D81),
    ô *Chi tiết (kỹ thuật)* trên khung log (D83).
-2. Chạy app bản mới: mục **"Còn lại cho bạn"** trong `docs/TEST_2CHANG.md` (xả nhanh bằng acc thật, log, gom).
-3. Cho biết **lienminhfc** có phải user không (đưa 5 món 456 cho `tungkhodo9` lúc 16/09 23:50).
-4. Ảnh "Sao k check ruong nhi?" (02:1x) có phải chụp trên **máy khác / VPS** không — nếu có: máy đó cần cài đặt kho
+2. **Rút xu** (đề xuất D89, việc TroLyAI `f41331`): chốt 3 điểm — xác nhận lệnh từ 100 triệu, cho phép `cho <tên>`,
+   lệnh xu tách riêng lệnh đồ. Nhận xu và dồn xu (D45) **chưa từng test sống** → test trước khi làm.
+3. Chạy app bản mới: mục **"Còn lại cho bạn"** trong `docs/TEST_2CHANG.md` (xả nhanh bằng acc thật, log, gom).
+4. Cho biết **lienminhfc** có phải user không (đưa 5 món 456 cho `tungkhodo9` lúc 16/09 23:50).
+5. Ảnh "Sao k check ruong nhi?" (02:1x) có phải chụp trên **máy khác / VPS** không — nếu có: máy đó cần cài đặt kho
    đầy đủ hoặc chép `Data\Kho\Mặc định.txt` sang; không chạy hai máy cùng bộ acc.
-5. **Lỗi "bay" ở NSOBAOTATL / NSOLITEPRO** (D77): chưa mang sang (NSOBAOTATL: hệ thống chặn sửa repo khác, cần user cho
+6. **Lỗi "bay" ở NSOBAOTATL / NSOLITEPRO** (D77): chưa mang sang (NSOBAOTATL: hệ thống chặn sửa repo khác, cần user cho
    phép rõ; NSOLITEPRO: ~1.200 dòng chưa commit của phiên khác, có chính `KeepAliveController.cs`).
-6. Cân nhắc **cài Khu phụ** và **đổi khu chính khỏi khu 0** (M12, M20).
+7. Cân nhắc **cài Khu phụ** và **đổi khu chính khỏi khu 0** (M12, M20).
+
+## Vòng 14 — đã làm (chi tiết `docs/WORKLOG.md` 17/09 chiều)
+
+| Việc | Quyết định | Kiểm chứng |
+|---|---|---|
+| User nhắc: ô giao dịch tối đa 29.999, chồng gộp tới 32.000 (M30) | D88 tách chồng lớn trước; xả nhanh / gỡ kẹt bỏ qua chồng lớn; dọn kho tính 2 ô | KiemKho (21 ca mới); soát lỗi độc lập 8 điểm; **chưa test sống** |
 
 ## Vòng 13 — đã làm (chi tiết `docs/WORKLOG.md` 17/09 10h45)
 
@@ -43,6 +50,8 @@ Lúc dừng (11:56): mọi tiến trình test đã tắt; `tungkhodo9` rỗng t�
 - Xả nhanh: lượt nạp đầu mở đợt, clone cần ~4 s để tới → nạp dồn dập thì lượt thứ 3 thường bị "nhận rồi huỷ" một lần.
   Đồ xả vào clone đứng cạnh không theo kệ (Gom gộp đồ xếp chồng sau); đồ Rác không chuyển tiếp.
 - Chưa đối chiếu túi trước/sau mỗi lần nạp (N9 "LECH").
+- Chồng ≥ 30.000 (D88) mới kiểm offline; server báo gì khi đặt ô 30.000 chưa đo; thứ tự gói cập nhật túi sau khi tách
+  chưa đo (bot chờ ô nguồn giảm tối đa 1,5 s).
 - `lay … cho <tên có dấu cách>` không đọc được → dùng tool.
 - `hex.log` chỉ chiều server → bot; `chat.log` chưa ghi tin khu của người khác.
 - Cột "Hạn" chỉ tham khảo (D72); thú cưỡi không phân biệt cấp (D80). Đá không xếp chồng — mỗi viên một ô.

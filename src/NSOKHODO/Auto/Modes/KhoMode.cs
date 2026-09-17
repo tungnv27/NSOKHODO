@@ -34,6 +34,7 @@ namespace NSOKHODO.Auto
         private const int CHO_RUONG_DAP_MS = 7000;
         private const int CHO_MOT_MON_RUONG_MS = 3000;
         private const int CHO_TACH_MS = 4000;
+        private const int CHO_O_NGUON_MS = 1500;
         private const int TIM_NGUOI_TOI_DA_MS = 30000;
         private const int SANG_KHU_TOI_DA_MS = 90000;
         private const int CHO_SAU_VAO_KHU_MS = 2500;
@@ -55,6 +56,8 @@ namespace NSOKHODO.Auto
         // cho tach chong
         private int _tachTuO = -1;
         private int _tachSo;
+        private int _tachConLai;        // so con lai o o nguon sau khi tach
+        private DateTime _tachThayManh = DateTime.MinValue;   // luc thay manh tach ma o nguon chua giam
         private short _tachTpl;
         private HashSet<int> _oTrongTruocTach;
         private DateTime _tachDen;
@@ -554,7 +557,9 @@ namespace NSOKHODO.Auto
         }
 
         /// <summary>
-        /// Chon toi da 12 o tui cho mot luot: moi o phai la NGUYEN CHONG vua du (khong vuot so con lai).
+        /// Chon toi da 12 o tui cho mot luot: moi o phai la NGUYEN CHONG vua du (khong vuot so con lai) va khong qua
+        /// <see cref="Controller.TradeHandler.MAX_SO_LUONG"/> (M30). Xet chong lon truoc - cung thu tu voi
+        /// <see cref="CanTach"/> - nen phan le con lai sau khi tach (vd 2.001 cua chong 32.000) khong chiem cho chong vua tach.
         /// </summary>
         private static byte[] ChonO(CharacterState mc, Viec v)
         {
@@ -567,19 +572,34 @@ namespace NSOKHODO.Auto
                 int n; conLai.TryGetValue(d.Khoa, out n);
                 conLai[d.Khoa] = n + d.ConLai;
             }
-            for (int i = 0; i < bag.Length && r.Count < Controller.TradeHandler.MAX_MON; i++)
+            foreach (int i in LonTruoc(bag))
             {
+                if (r.Count >= Controller.TradeHandler.MAX_MON) break;
                 var it = bag[i];
                 if (it == null || it.IsEmpty || it.IsLock) continue;
                 var k = KhoaMon.Tu(it);
                 int con;
                 if (!conLai.TryGetValue(k, out con) || con <= 0) continue;
                 int sl = Math.Max(1, (int)it.Quantity);
-                if (sl > con) continue;
+                if (sl > con || sl > Controller.TradeHandler.MAX_SO_LUONG) continue;
                 r.Add((byte)i);
                 conLai[k] = con - sl;
             }
+            r.Sort();
             return r.ToArray();
+        }
+
+        /// <summary>Cac o tui theo so luong giam dan, bang nhau thi theo so o.</summary>
+        private static List<int> LonTruoc(Item[] bag)
+        {
+            var r = new List<int>();
+            for (int i = 0; i < bag.Length; i++) r.Add(i);
+            r.Sort((a, b) =>
+            {
+                int qa = bag[a] == null ? 0 : bag[a].Quantity, qb = bag[b] == null ? 0 : bag[b].Quantity;
+                return qa != qb ? qb.CompareTo(qa) : a.CompareTo(b);
+            });
+            return r;
         }
 
         /// <summary>
@@ -621,7 +641,9 @@ namespace NSOKHODO.Auto
             int jLay = canOTach ? -1 : ORuongCanLay(box, thieu);
             if (jLay < 0 && !canOTach)
             {
-                if (soGiao > 0) return true;   // ruong het: giao phan dang co, luot sau moi bao thieu
+                // Ruong het: giao phan dang co, luot sau moi bao thieu. Phan dang co co the phai tach truoc (chong 32.000,
+                // can 40.000 - M30): nhanh nay tui con o trong (khong thi canOTach da dung) nen tach duoc.
+                if (soGiao > 0 || CanTachChong(bag, v)) return true;
                 var p = new List<string>();
                 foreach (var kv in thieu) p.Add(BangMon.Ten(kv.Key.Tpl) + " thieu " + kv.Value);
                 loi = "khong du hang: " + string.Join(", ", p.ToArray());
@@ -724,25 +746,32 @@ namespace NSOKHODO.Auto
         /// <summary>Co dong nao can tach chong khong (cung phep tinh voi <see cref="TachChoKhop"/>).</summary>
         private static bool CanTachChong(Item[] bag, Viec v)
         {
+            int o, so;
             foreach (var d in v.Dong)
-            {
-                if (d.ConLai <= 0) continue;
-                var cacO = new List<int>();
-                for (int i = 0; i < bag.Length; i++)
-                    if (d.Khoa.Khop(bag[i])) cacO.Add(i);
-                cacO.Sort((a, b) => bag[b].Quantity.CompareTo(bag[a].Quantity));
-                int tong = 0, oDu = -1;
-                foreach (int i in cacO)
-                {
-                    int sl = Math.Max(1, (int)bag[i].Quantity);
-                    if (tong + sl <= d.ConLai) tong += sl;
-                    else if (oDu < 0) oDu = i;
-                }
-                if (tong >= d.ConLai || oDu < 0) continue;
-                int can = d.ConLai - tong;
-                if (can >= 1 && can < bag[oDu].Quantity) return true;
-            }
+                if (CanTach(bag, d, out o, out so)) return true;
             return false;
+        }
+
+        /// <summary>
+        /// Dong nay can tach khong: gom o NGUYEN CHONG giao duoc (&lt;= MAX_SO_LUONG) tu lon den nho khong vuot so con
+        /// lai; con thieu thi tach phan thieu - toi da MAX_SO_LUONG (M30) - tu o dau tien khong dung nguyen duoc.
+        /// Chong 32.000 can giao het: tach 29.999, luot sau con 2.001 dung nguyen.
+        /// </summary>
+        private static bool CanTach(Item[] bag, DongGiao d, out int oTach, out int soTach)
+        {
+            oTach = -1; soTach = 0;
+            if (d.ConLai <= 0) return false;
+            int tong = 0;
+            foreach (int i in LonTruoc(bag))
+            {
+                if (!d.Khoa.Khop(bag[i])) continue;
+                int sl = Math.Max(1, (int)bag[i].Quantity);
+                if (sl <= Controller.TradeHandler.MAX_SO_LUONG && tong + sl <= d.ConLai) tong += sl;
+                else if (oTach < 0) oTach = i;
+            }
+            if (tong >= d.ConLai || oTach < 0) return false;   // oTach < 0: thieu hang - buoc lay ruong lo
+            soTach = Math.Min(d.ConLai - tong, Controller.TradeHandler.MAX_SO_LUONG);
+            return soTach >= 1 && soTach < bag[oTach].Quantity;   // client goc: 1 <= so < so trong o
         }
 
         /// <summary>
@@ -763,7 +792,15 @@ namespace NSOKHODO.Auto
                     var it = bag[i];
                     if (it != null && !it.IsEmpty && it.TemplateId == _tachTpl && it.Quantity == _tachSo)
                     {
-                        Client.Log(string.Format("[Kho] Tach chong xong: o {0} -> o {1} x{2}", _tachTuO, i, _tachSo));
+                        // Cho ca o nguon giam (review 17/09): tinh lai khi o nguon con so cu thi chong 32.000 bi tach
+                        // them 2.001 tu o thuc chi con 2.001 -> server bo qua -> hong. Thu tu goi cap nhat tui chua do:
+                        // qua 1,5 s ma o nguon chua doi thi van coi la xong (nhu ban truoc).
+                        var goc = _tachTuO < bag.Length ? bag[_tachTuO] : null;
+                        bool daGiam = goc != null && !goc.IsEmpty && goc.Quantity == _tachConLai;
+                        if (_tachThayManh == DateTime.MinValue) _tachThayManh = DateTime.UtcNow;
+                        if (!daGiam && (DateTime.UtcNow - _tachThayManh).TotalMilliseconds < CHO_O_NGUON_MS) { ms = 50; return false; }
+                        Client.Log(string.Format("[Kho] Tach chong xong: o {0} -> o {1} x{2}{3}", _tachTuO, i, _tachSo,
+                            daGiam ? "" : " (o nguon chua cap nhat)"));
                         _tachTuO = -1;
                         ms = 50;
                         return false;
@@ -777,25 +814,9 @@ namespace NSOKHODO.Auto
 
             foreach (var d in _viec.Dong)
             {
-                if (d.ConLai <= 0) continue;
-                // Gom o nguyen chong tu lon den nho khong vuot so can
-                var cacO = new List<int>();
-                for (int i = 0; i < bag.Length; i++)
-                    if (d.Khoa.Khop(bag[i])) cacO.Add(i);
-                cacO.Sort((a, b) => bag[b].Quantity.CompareTo(bag[a].Quantity));
-                int tong = 0;
-                int oDu = -1;
-                foreach (int i in cacO)
-                {
-                    int sl = Math.Max(1, (int)bag[i].Quantity);
-                    if (tong + sl <= d.ConLai) tong += sl;
-                    else if (oDu < 0) oDu = i;
-                }
-                if (tong >= d.ConLai) continue;
-                if (oDu < 0) continue;   // thieu hang - buoc lay ruong da bao, o day de giao phan dang co
-                int can = d.ConLai - tong;
+                int oDu, can;
+                if (!CanTach(bag, d, out oDu, out can)) continue;
                 int trongO = bag[oDu].Quantity;
-                if (can < 1 || can >= trongO) continue;   // client goc: 1 <= so < so trong o
                 var trong = new HashSet<int>();
                 for (int i = 0; i < bag.Length; i++) if (bag[i] == null || bag[i].IsEmpty) trong.Add(i);
                 if (trong.Count == 0)
@@ -808,6 +829,8 @@ namespace NSOKHODO.Auto
                 _oTrongTruocTach = trong;
                 _tachTuO = oDu;
                 _tachSo = can;
+                _tachConLai = trongO - can;
+                _tachThayManh = DateTime.MinValue;
                 _tachTpl = bag[oDu].TemplateId;
                 _tachDen = DateTime.UtcNow.AddMilliseconds(CHO_TACH_MS);
                 Client.Items.SendSplitStack((byte)oDu, can);

@@ -85,6 +85,7 @@ static class KiemKho
         KiemModeRuong();
         KiemDieuPhoi();
         KiemNhaChong();
+        KiemChongLon();
         KiemGoKetVaKhu();
         KiemGomVaXa();
 
@@ -1026,6 +1027,197 @@ static class KiemKho
         tick();
         Xac(LayField(m, "_viec") == null && dem(": XONG") == xongTruoc + 1,
             "ChiTui: da giao mot phan, tui het mon khop -> XONG phan da giao (khong bao hong)");
+
+        // ===== M30 (user 17/09): mot o giao dich toi da 29.999, chong trong tui gop toi 32.000 =====
+        Func<Viec, string> chonO = delegate(Viec vv)
+        {
+            var o = (byte[])typeof(NSOKHODO.Auto.KhoMode).GetMethod("ChonO", BindingFlags.NonPublic | BindingFlags.Static)
+                .Invoke(null, new object[] { mc, vv });
+            return string.Join(",", o.Select(x => x.ToString()).ToArray());
+        };
+        Func<string, bool> tickDenLog = delegate(string mau)
+        {
+            int truocL = dem(mau);
+            for (int i = 0; i < 10 && LayField(m, "_viec") != null; i++) { tick(); if (dem(mau) > truocL) return true; }
+            return false;
+        };
+
+        // --- E3: luot chuyen tiep ChiTui gap chong 30.000 -> khong giao, khong tach ---
+        mc.BagItems = Tui(30, Mon(457, 30000));
+        mc.BoxItems = Tui(30);
+        var vE3 = new Viec
+        {
+            Loai = LoaiViec.GiaoMon, Acc = "mr", NguoiNhan = "CloneX", NguoiNhanLaBot = true, MucDich = "xa", ChiTui = true,
+            Khu = 5, HetHan = DateTime.Now.AddMinutes(5),
+        };
+        vE3.Dong.Add(new DongGiao { Khoa = KhoaMon.Tu(Mon(457, 1)), SoLuong = 30000 });
+        int khongCoE3 = dem("LOI KHONG_CO_MON"), tachE3 = dem("Tach chong");
+        batDau(vE3);
+        DatField(m, "_buoc", Enum.Parse(LayField(m, "_buoc").GetType(), "GiaoDich"));
+        tick();
+        Xac(LayField(m, "_viec") == null && dem("LOI KHONG_CO_MON") == khongCoE3 + 1 && dem("Tach chong") == tachE3,
+            "ChiTui + chong 30.000 -> KHONG_CO_MON, khong dem o 30.000 di giao, khong tach");
+
+        // --- F: giao ca chong 32.000 -> tach 29.999, phan le 2.001 giao nguyen, cung mot luot ---
+        mc.BagItems = Tui(30, Mon(457, 32000));
+        var vF = new Viec { Loai = LoaiViec.GiaoMon, Acc = "mr", NguoiNhan = "ChuA", MucDich = "rut", HetHan = DateTime.Now.AddMinutes(5) };
+        vF.Dong.Add(new DongGiao { Khoa = KhoaMon.Tu(Mon(457, 1)), SoLuong = 32000 });
+        Bang(chonO(vF), "", "chong 32.000 chua tach -> khong chon o nao");
+        int xinF = dem("Xin danh sach ruong");
+        batDau(vF);
+        Xac(tickDenLog("Tach chong o 0: lay 29999/32000"), "can 32.000 tu chong 32.000 -> tach 29.999");
+        // Manh moi ve truoc, o nguon chua giam (thu tu goi chua do): tinh lai luc nay se tach 2.001 tu o chi con 2.001.
+        mc.BagItems[1] = Mon(457, 29999);
+        int xongF = dem("Tach chong xong"), tachF = dem("Tach chong o 0: lay");
+        tick(); tick();
+        Xac(dem("Tach chong xong") == xongF && dem("Tach chong o 0: lay") == tachF,
+            "manh 29.999 ve truoc, o nguon van 32.000 -> cho o nguon giam, chua tach tiep");
+        mc.BagItems[0] = Mon(457, 2001);
+        chay(457, 10);
+        Xac(buoc() == "SangKhu" && dem("Xin danh sach ruong") == xinF && chonO(vF) == "0,1",
+            "29.999 + 2.001 du 32.000 -> khong tach them, khong mo ruong, giao 2 o mot luot (buoc " + buoc() + ", o " + chonO(vF) + ")");
+
+        // --- F2: can 30.000 tu chong 32.000 -> tach 29.999 roi tach 1 tu phan le; giao 29.999 + 1 ---
+        mc.BagItems = Tui(30, Mon(457, 32000));
+        var vF2 = new Viec { Loai = LoaiViec.GiaoMon, Acc = "mr", NguoiNhan = "ChuA", MucDich = "rut", HetHan = DateTime.Now.AddMinutes(5) };
+        vF2.Dong.Add(new DongGiao { Khoa = KhoaMon.Tu(Mon(457, 1)), SoLuong = 30000 });
+        batDau(vF2);
+        Xac(tickDenLog("Tach chong o 0: lay 29999/32000"), "can 30.000 -> lan tach dau chi 29.999");
+        mc.BagItems[0] = Mon(457, 2001);
+        mc.BagItems[1] = Mon(457, 29999);
+        Xac(tickDenLog("Tach chong o 0: lay 1/2001"), "con thieu 1 -> tach 1 tu phan le 2.001 (khong dong vao chong 29.999)");
+        // O nguon khong bao gio cap nhat trong 1,5 s -> van coi la xong (nhu ban truoc), co ghi chu
+        mc.BagItems[2] = Mon(457, 1);
+        tick();
+        DatField(m, "_tachThayManh", DateTime.UtcNow.AddSeconds(-2));
+        Xac(tickDenLog("(o nguon chua cap nhat)"), "manh ve ma o nguon 1,5 s chua doi -> van coi la tach xong");
+        mc.BagItems[0] = Mon(457, 2000);
+        chay(457, 10);
+        Xac(buoc() == "SangKhu" && chonO(vF2) == "1,2",
+            "giao 29.999 + 1 = 30.000 mot luot, khong chon phan le 2.000 o dau tui (buoc " + buoc() + ", o " + chonO(vF2) + ")");
+
+        // --- G: can 40.000, tui chi co chong 32.000, ruong het -> tach, giao phan dang co (khong bao thieu ngay - D73) ---
+        mc.BagItems = Tui(30, Mon(457, 32000));
+        mc.BoxItems = Tui(30);
+        var vG = new Viec { Loai = LoaiViec.GiaoMon, Acc = "mr", NguoiNhan = "ChuA", MucDich = "rut", HetHan = DateTime.Now.AddMinutes(5) };
+        vG.Dong.Add(new DongGiao { Khoa = KhoaMon.Tu(Mon(457, 1)), SoLuong = 40000 });
+        int thieuG = dem("khong du hang");
+        batDau(vG);
+        Xac(tickDenLog("Tach chong o 0: lay 29999/32000") && dem("khong du hang") == thieuG && LayField(m, "_viec") != null,
+            "can 40.000, chi co chong 32.000 -> tach 29.999 de giao phan dang co, chua bao thieu");
+        DatField(m, "_tachTuO", -1);
+        DatField(m, "_viec", null);
+    }
+
+    // ================= 10b2. Chong lon phia dieu phoi (M30) =================
+
+    static void KiemChongLon()
+    {
+        Console.WriteLine("=== Chong lon: dieu phoi tinh o giao dich toi da 29.999 ===");
+        var bagL = new List<Item> { Mon(464, 32000) };
+        for (int i = 0; i < 11; i++) bagL.Add(Mon(464, 5));
+        bagL.Add(Mon(460, 1));
+        var cL = TaoClient("clL", "ClLeader", 3101, Tui(30, bagL.ToArray()), Tui(30), 0, "Kiem");
+        var cA = TaoClient("clA", "ClA", 3102, Tui(30), Tui(30), 0, "Kiem");
+        var ruongDay = Tui(30);
+        for (int i = 0; i < 30; i++) ruongDay[i] = Mon(461, 1);
+        var cB = TaoClient("clB", "ClB", 3103, Tui(1, Mon(464, 30000)), ruongDay, 0, "Kiem");
+        DatKhu(cL, 22, 3);
+        DatKhu(cA, 22, 5);
+        DatKhu(cB, 22, 5);
+        var accs = new List<AccountConfig> { cL.Config, cA.Config, cB.Config };
+        var fleet = new FleetManager();
+        ((List<NsoClient>)LayField(fleet, "_clients")).AddRange(new[] { cL, cA, cB });
+        var cfg = new KhoConfig { Leader = "clL", KhuChinh = 3, KhuPhu = 5, RaoBat = false, BatCatRuong = false };
+        var dp = new KhoDieuPhoi(fleet, delegate { return accs; }, cfg);
+        Action nhip = delegate { Goi(dp, "Nhip"); };
+        nhip();
+        foreach (var c in new[] { cL, cA, cB }) ChanGui(dp.Kenh, c);
+
+        // Xa nhanh (ChiTui, khong tach): bo chong 32.000
+        var ds = (List<DongGiao>)Goi(dp, "MonChuyenDuoc", cL, 12);
+        Xac(ds.Count == 2 && ds.Exists(d => d.Khoa.Tpl == 464 && d.SoLuong == 55) && ds.Exists(d => d.Khoa.Tpl == 460)
+            && !ds.Exists(d => d.SoLuong >= 30000),
+            "xa nhanh: bo o 32.000, chuyen 11 o 464 x5 + 460 (" + string.Join(", ", ds.Select(d => d.Khoa.Tpl + "x" + d.SoLuong).ToArray()) + ")");
+
+        // Clone ket cung chi con chong 30.000 trong tui (khong tach duoc) -> khong tra bot chong do
+        cL.GameState.MyChar.BagItems[12] = new Item();
+        nhip();
+        var vB = dp.ViecCua("clB");
+        Xac(vB == null || vB.MucDich != "tra", "clB ket cung, tui chi co chong 30.000 -> khong tao luot tra bot");
+
+        // Don kho: o 32.000 chiem 2 o giao dich -> luot 12 o = 32.000 + 10 o x5
+        var vA = dp.ViecCua("clA");
+        Xac(vA != null && vA.Loai == LoaiViec.DoiNhan, "don kho: goi clA nhan");
+        DatKhu(cA, 22, 3);
+        nhip();
+        var vL = dp.ViecCua("clL");
+        Xac(vL != null && vL.Dong.Count == 1 && vL.Dong[0].Khoa.Tpl == 464 && vL.Dong[0].SoLuong == 32050,
+            "don kho: chong 32.000 tinh 2 o -> luot mang 32.000 + 10 x 5 = 32.050 ("
+            + (vL == null ? "khong co viec" : string.Join(", ", vL.Dong.Select(d => d.Khoa.Tpl + "x" + d.SoLuong).ToArray())) + ")");
+
+        // Doi chung: cung clB nhung chong 29.999 -> co luot tra bot (ca kiem tren khong dung vi thiet lap sai)
+        DatField(dp, "_don", null);
+        ((System.Collections.IDictionary)LayField(dp, "_viec")).Clear();
+        cL.GameState.MyChar.BagItems = Tui(30);
+        cB.GameState.MyChar.BagItems = Tui(1, Mon(464, 29999));
+        DatField(dp, "_donNghiDen", DateTime.MinValue);
+        nhip();
+        vB = dp.ViecCua("clB");
+        Xac(vB != null && vB.MucDich == "tra" && vB.Dong.Count == 1 && vB.Dong[0].SoLuong == 29999,
+            "doi chung: clB ket cung voi chong 29.999 -> tra bot chong do cho Leader");
+
+        // Go ket (review 17/09): CoTheTraBot / ChoGoKet cung luat voi TaoTraBot + ChonO
+        cB.GameState.MyChar.BagItems = Tui(1, Mon(464, 30000));
+        dp.So.CapNhat(cB);
+        var thamSo = new object[] { dp.So.Lay("clB"), null };
+        bool traDuoc = (bool)Goi(dp, "CoTheTraBot", thamSo);
+        Xac(!traDuoc && ((string)thamSo[1] ?? "").Contains("chong qua"),
+            "CoTheTraBot: tui het o chi co chong 30.000 -> khong tra bot duoc (" + thamSo[1] + ")");
+        cB.GameState.MyChar.BagItems = Tui(2, Mon(464, 32000), Mon(461, 1));
+        dp.So.CapNhat(cB);
+        var lG = new LenhRut { So = 901 };
+        lG.KeHoach.Add(new PhanGiao { Acc = "clB", Khoa = KhoaMon.Tu(Mon(464, 1)), SoLuong = 32000 });
+        Xac((bool)Goi(dp, "ChoGoKet", "clB", new List<LenhRut> { lG }),
+            "ChoGoKet: hang cua lenh la chong 32.000 trong tui het o -> cho go ket (tra 461), khong giao ngay");
+        cB.GameState.MyChar.BagItems = Tui(2, Mon(464, 29999), Mon(461, 1));
+        dp.So.CapNhat(cB);
+        lG.KeHoach[0].SoLuong = 29999;
+        Xac(!(bool)Goi(dp, "ChoGoKet", "clB", new List<LenhRut> { lG }), "doi chung: chong 29.999 -> giao ngay, khong cho go ket");
+
+        // Luot don rong (review 17/09): mon dau la chong 32.000 (2 o) ma nick nha chi nhan duoc 1 o
+        var cL2 = TaoClient("cl2L", "Cl2Leader", 3111, Tui(30, Mon(465, 32000)), Tui(30), 0, "Kiem");
+        var cN = TaoClient("cl2N", "Cl2N", 3112, Tui(3, Mon(465, 5)), Tui(30), 0, "Kiem");
+        DatKhu(cL2, 22, 3);
+        DatKhu(cN, 22, 5);
+        var accs2 = new List<AccountConfig> { cL2.Config, cN.Config };
+        var fleet2 = new FleetManager();
+        ((List<NsoClient>)LayField(fleet2, "_clients")).AddRange(new[] { cL2, cN });
+        var dp2 = new KhoDieuPhoi(fleet2, delegate { return accs2; },
+            new KhoConfig { Leader = "cl2L", KhuChinh = 3, KhuPhu = 5, RaoBat = false, BatCatRuong = false });
+        Action nhip2 = delegate { Goi(dp2, "Nhip"); };
+        nhip2();
+        foreach (var c in new[] { cL2, cN }) ChanGui(dp2.Kenh, c);
+        nhip2();
+        var nghi2 = (System.Collections.IDictionary)LayField(dp2, "_nghiNhanDon");
+        Xac(dp2.ViecCua("cl2N") == null && nghi2.Contains("cl2N"),
+            "nick nha con nhan 1 o, mon la chong 32.000 (2 o) -> khong goi, nick nghi 2 phut (khong chon lai mai)");
+
+        // Tui Leader het o: chong 32.000 trong tui khong tach duoc -> luot bo qua no
+        nghi2.Clear();
+        DatField(dp2, "_donNghiDen", DateTime.MinValue);
+        var tuiDay = new List<Item> { Mon(465, 32000) };
+        for (int i = 0; i < 29; i++) tuiDay.Add(Mon(465, 5));
+        cL2.GameState.MyChar.BagItems = Tui(30, tuiDay.ToArray());
+        cN.GameState.MyChar.BagItems = Tui(30, Mon(465, 5));
+        nhip2();
+        Xac(dp2.ViecCua("cl2N") != null, "tui Leader day -> goi cl2N nhan");
+        DatKhu(cN, 22, 3);
+        nhip2();
+        var vL2 = dp2.ViecCua("cl2L");
+        Xac(vL2 != null && vL2.Dong.Count == 1 && vL2.Dong[0].SoLuong == 60,
+            "tui Leader het o -> luot 12 chong x5 = 60, khong mang chong 32.000 (can o trong de tach) ("
+            + (vL2 == null ? "khong co viec" : string.Join(", ", vL2.Dong.Select(d => d.Khoa.Tpl + "x" + d.SoLuong).ToArray())) + ")");
     }
 
     // ================= 10c. Don kho: mon xep chong ve nick dang giu (user 16/09) =================

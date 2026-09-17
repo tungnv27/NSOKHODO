@@ -271,3 +271,37 @@ làm Leader chờ 20 s.
 - Hỏi "nếu người dùng làm khác thì sao" lộ ra điểm yếu mà ca kiểm theo kịch bản của người viết không thấy.
 - Câu chữ báo người chơi ("mời lại sau ~5 giây") phải đo luật server trước — sai là người chơi bị khoá 30 s.
 - "Quá xa" chưa chắc do khoảng cách ngang: chỗ đứng chọn theo toạ độ phải xét tầng đất của bản đồ.
+
+## 2026-09-17 chiều — một ô giao dịch tối đa 29.999 (D88, M30)
+
+**User nhắc:** *"vật phẩm gom tối đa gd chỉ được là 29999 thôi 30000 là game k cho gd. Nhưng vật phẩm xếp trồng lại gộp
+được 32000 là tối đa"*. Client 251 không có luật này → server chặn. Bản cũ chọn **nguyên chồng** vừa đủ số cần giao, nên
+chồng 32.000 (túi / rương tự gộp) sẽ bị đem đi giao nguyên → hỏng lặp lại.
+
+**Sửa (D88):** hằng `TradeHandler.MAX_SO_LUONG = 29999`.
+- `KhoMode`: `ChonO` bỏ ô > 29.999; chọn ô và tách chồng dùng chung một phép tính "chồng lớn trước" (`CanTach`) — nếu
+  không, phần lẻ 2.001 ở ô đầu bị chọn thay chồng 29.999 vừa tách → thêm lượt và thêm lần tách.
+- Điều phối: xả nhanh bỏ qua chồng > 29.999 (lượt chuyển không tách, dọn kho thường tách); dọn kho tính chồng lớn là
+  2 ô; gỡ kẹt không trả chồng lớn; gom giữ ngưỡng tổng ≤ 29.999.
+
+**Soát lỗi độc lập — 8 điểm, đã sửa cả 8 (có ca kiểm); điểm 9 là harness `NguoiChoi nap`, để nguyên (dùng để đo):**
+1. (vừa) `ChoGoKet` coi chồng 32.000 là "giao ngay" → clone kẹt cứng báo TUI_DAY mãi, không bao giờ gỡ kẹt. Sửa: cùng
+   luật `ChonO`.
+2. `CoTheTraBot` chưa lọc chồng lớn như `TaoTraBot` → chờ gỡ kẹt vô ích.
+3. (vừa) Món đầu tiên là chồng lớn (2 ô) mà nick nhà chỉ nhận 1 ô → lượt dọn rỗng, 30 s sau chọn lại đúng cặp đó → dọn
+   kho kẹt. Sửa: lượt rỗng → nick nghỉ 2 phút.
+4. Chồng lớn trong túi Leader cũng cần một ô trống để tách → túi Leader hết ô thì lượt không mang chồng đó.
+5. Cần 40.000, túi chỉ có chồng 32.000, rương hết → bản sửa đầu báo thiếu ngay (bản cũ giao nguyên 32.000). Sửa: tách
+   và giao phần đang có.
+6. Gom: nick đọc rương sau lúc ghim đợt có thể mang chồng lớn → lọc.
+7. Lệnh khu riêng (D84) chờ chồng lớn trong **túi** Leader lúc đang xả nhanh → chờ tới hết đợt. Sửa: coi như hàng "gấp"
+   xả không chuyển được, dọn thẳng từ túi.
+8. Tách xong chỉ nhìn mảnh mới: nếu gói cập nhật ô nguồn về sau thì chồng 32.000 bị tách thêm 2.001 từ ô chỉ còn 2.001
+   → hỏng. Sửa: chờ ô nguồn giảm đúng số, tối đa 1,5 s (quá thì coi là xong như cũ — thứ tự gói chưa đo).
+
+**Kiểm chứng:** build Release sạch; `tools/kiemtra/chay.ps1` PASS (482 ca, thêm 21). **Chưa test sống**: sổ kho (harness
+và bản `bin/Release`) không có chồng nào quá 146 món — cần một chồng ≥ 30.000 để thử; server báo câu gì khi đặt ô 30.000
+cũng chưa đo.
+
+**Bài học.** Đổi luật chọn ô thì mọi nơi "đoán trước" mode sẽ chọn gì (gỡ kẹt, dọn kho, xả nhanh, gom) phải đổi theo —
+agent soát lỗi tìm ra 7 chỗ như vậy mà ca kiểm theo kịch bản chính không chạm tới.

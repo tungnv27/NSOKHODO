@@ -73,7 +73,7 @@ trong `Shown`, `RadioButton` có `Panel` riêng.
 | File | Việc |
 |---|---|
 | `Service/TradeService.cs` | chiều GỬI giao dịch: 43, 44, 45, 46, 56, 57 |
-| `Controller/TradeHandler.cs` | chiều NHẬN: 37, 43, 45, 46, 57, 58 |
+| `Controller/TradeHandler.cs` | chiều NHẬN: 37, 43, 45, 46, 57, 58; hằng `MAX_MON` (12 ô), `MAX_SO_LUONG` (29.999 / ô — D88) |
 | `Client/TradeState.cs` | trạng thái giao dịch (luồng nhận ghi, luồng mode đọc ảnh chụp) |
 | `Auto/Modes/KhoMode.cs` | mode duy nhất: phiên → lời mời → việc → rảnh (về đúng khu / chỗ đứng) |
 | `Kho/PhienGiaoDich.cs` | máy trạng thái một phiên, hai vai (nhận / giao) |

@@ -1,6 +1,6 @@
 # NSOKHODO — Kho đồ chung cho Ninja School Online
 
-> **Trạng thái: ✅ ĐÃ CHỐT — SPEC v1.3 (2026-09-16; v1.1 = .NET 4.5.2 (D49); v1.2 = làm một lượt + bố cục A (D50, D51); v1.3 = các quyết định chốt trong lúc code, vòng 9 / D52–D63; vòng 10 / D64–D71 từ test sống; vòng 11 / D72–D79 từ lỗi user gặp khi dùng app thật; vòng 12 / D80–D85: gom đồ, cửa xả, log dễ đọc; vòng 13 / D86–D87: xả nhanh qua Leader). ĐÃ CODE P1–P4, ĐÃ TEST SỐNG PHẦN KHO, CHỜ USER TEST GIAO DIỆN + DUYỆT D52–D87.**
+> **Trạng thái: ✅ ĐÃ CHỐT — SPEC v1.3 (2026-09-16; v1.1 = .NET 4.5.2 (D49); v1.2 = làm một lượt + bố cục A (D50, D51); v1.3 = các quyết định chốt trong lúc code, vòng 9 / D52–D63; vòng 10 / D64–D71 từ test sống; vòng 11 / D72–D79 từ lỗi user gặp khi dùng app thật; vòng 12 / D80–D85: gom đồ, cửa xả, log dễ đọc; vòng 13 / D86–D87: xả nhanh qua Leader; vòng 14 / D88: một ô giao dịch tối đa 29.999). ĐÃ CODE P1–P4, ĐÃ TEST SỐNG PHẦN KHO, CHỜ USER TEST GIAO DIỆN + DUYỆT D52–D88.**
 > Sửa spec sau mốc này thì ghi thêm một vòng ở §1 và một dòng quyết định ở §2, **không sửa ngầm**.
 > **Test tay (P0a) XONG:** T0 cho thấy **giao dịch KHÔNG khoá đồ** → thiết kế đi tiếp. Kết quả đầy đủ: `TEST_TAY.md`.
 > **Việc đang làm:** chờ user chạy `TEST_2CHANG.md`. Trạng thái chi tiết: `docs/STATUS.md`.
@@ -120,6 +120,12 @@ MINH sửa rồi test sống lại, chốt tạm D72–D79 (§2) — **chờ use
 
 MINH đo trên server (M27–M29) rồi chốt tạm D86–D87 (§2) — **chờ user xác nhận**. Phần (a) của D82 (người chơi giao
 thẳng vào clone) bỏ.
+
+**Vòng 14 (17/09 chiều):**
+> Với vật phẩm gom tối đa gd chỉ được là 29999 thôi 30000 là game k cho gd. Nhưng vật phẩm xếp trồng lại gộp được 32000
+> là tối đa. Có lẽ bạn nên để ý để khi giao đồ
+
+Luật server do user nêu (M30) → D88 (§2).
 
 ## 2. Quyết định đã chốt
 
@@ -251,6 +257,12 @@ User test nhận đồ xong rồi giao MINH "tiếp tục test và hoàn thiện
 |---|---|---|
 | D86 | **Xả nhanh qua Leader** (thay D82a). Người chơi **chỉ giao dịch với Leader**; clone **không** nhận lời mời của người chơi nữa. Chủ kho nạp xong một lượt (hoặc mời lúc Leader đầy, hoặc nhắn `xa`) → mở **đợt xả**: tối đa **2 clone rảnh** (túi nhận được trọn 12 ô, không kệ Rác, không giữ hàng cho lệnh) sang khu chính, chờ **2,5 s** sau khi vào khu rồi đứng **sát Leader ±30 px, cùng tầng đất** (xét cờ đất của ô bản đồ; không có chỗ thì đứng chung / đứng ngay chỗ Leader). Leader rảnh + túi còn đồ chuyển được (không khoá, không giữ cho lệnh, không phải Rác) + clone đã đứng yên ≥ 3,5 s và Leader **nhìn thấy** nó → Leader giao ngay tối đa 12 ô **chỉ từ túi** (không ra Thủ khố, không tách chồng). Leader lại gần theo toạ độ **chính nó nhìn thấy**. Clone còn dưới 12 ô → đi cất rương, clone khác vào thay. Lỗi phía clone → bỏ clone đó 10 phút; 3 lần hỏng liền → đóng đợt; lỗi trung tính (chồng vừa gộp, bị chen, hết hạn, bộ điều phối huỷ) không tính. Clone đứng xong mà Leader **không thấy** quá 10 s (Leader vừa vào lại game — D52) → đổi clone khác. Đang xả thì Leader không đi cất rương; túi chỉ còn đồ không chuyển được, hoặc lệnh (D84) chờ hàng trong **rương** Leader → dọn kho thường vẫn chạy. Đóng đợt: 5 phút không nạp; `xa xong` / Chủ kho rời khu chính (chuyển nốt tối đa 60 s); tắt nhận đồ / dọn kho; kho đầy; đổi Leader. Lệnh rút cần clone đang đứng → clone nhường. `nap` không huỷ lượt chuyển (chỉ 2–3 s). | User: *"Clone nên tự lấy đồ từ leader thì nhanh hơn… gd chỉ mất 2-3s"* — đo: 11 lượt bot↔bot 12 món mất 2–3 s. Test sống: người chơi nạp 3 lượt liền (12 + 12 + 5) → **17 s, không lần nào bị khoá 30 s** (bản đầu 38 s); 3 lượt chuyển đều đạt. Bản đầu: clone đứng ở LeaderX − 30 → server kéo xuống y = 288 (mép tầng, M29), Leader mời 4 lần "quá xa". |
 | D87 | **Leader đầy thì NHẬN lời mời của Chủ kho rồi huỷ ngay khi khung mở** (không từ chối). Kèm tin *"Leader dang chuyen do sang clone, moi lai sau ~3 giay"* (clone đã đứng xong), *"Clone dang toi canh Leader, moi lai sau ~10 giay"* hoặc *"Leader dang don kho, moi lai sau ~15 giay"*. Áp dụng cả khi Leader đang chờ clone trả bớt (D78); đang giữ cửa (`nap`) mà Leader hết chỗ thì bỏ giữ cửa. Log dễ đọc ghi tối đa 1 dòng / phút cho mỗi Chủ kho. Người lạ vẫn bị từ chối như cũ. Phiên giao dịch gặp câu *"đang chờ hoàn thành một giao dịch khác"* → mời lại sau **3 s** (trước: 31 s). | Đo (M28): bị từ chối → người mời **khoá 30 s**; phiên đã mở rồi huỷ → mời lại **ngay**. Đo (M27): mời người đang giao dịch không bị khoá. Tin cũ *"moi lai sau ~5 giay"* là sai vì bị khoá 30 s. |
+
+### Quyết định vòng 14 (MINH, 17/09 chiều — chờ user xác nhận)
+
+| # | Quyết định | Vì sao |
+|---|---|---|
+| D88 | **Một ô giao dịch tối đa 29.999 món** (`TradeHandler.MAX_SO_LUONG`). Chồng lớn hơn (túi / rương gộp tới 32.000) phải **tách trước** (−85, mỗi lần ≤ 29.999): giao cả chồng 32.000 = 29.999 + 2.001 trong **một** lượt (2 ô). Chọn ô giao và tách chồng xét **chồng lớn trước** (cùng một phép tính) — phần lẻ vừa tách không chiếm chỗ của chồng 29.999. Lượt chuyển của xả nhanh (D86, không tách) **bỏ qua** chồng > 29.999 — dọn kho thường tách. Dọn kho tính chồng > 29.999 là 2 ô ở bên nhận, và cần ô trống túi Leader để tách (túi Leader hết ô → lượt không mang chồng đó); lượt dọn rỗng (món đầu cần 2 ô, nick chỉ nhận 1) → nick đó nghỉ 2 phút. Gỡ kẹt (D78: túi clone hết ô, không tách được) không trả chồng > 29.999, và lệnh chờ hàng là chồng đó thì **chờ gỡ kẹt** (không giao ngay). Lượt rút cần nhiều hơn chồng đang có mà rương hết → vẫn tách và giao phần đang có (D73). Tách xong chỉ khi mảnh mới về **và** ô nguồn giảm đúng số (chờ tối đa 1,5 s). Lệnh khu riêng (D84) chờ chồng lớn trong túi Leader → dọn thẳng từ túi cả khi đang xả nhanh. Gom (D81) chỉ gom loại tổng ≤ 29.999 và bỏ chồng lớn phát hiện sau. | User 17/09 (M30): ô 30.000 server không cho giao dịch; client gốc 251 không kiểm tra. Bản cũ chọn nguyên chồng 32.000 → giao dịch hỏng lặp lại. Chưa test sống: kho hiện không có chồng nào quá 146 món. |
 
 ## 3. Phạm vi
 

@@ -50,7 +50,7 @@ powershell -ExecutionPolicy Bypass -File tools\kiemtra\song.ps1 -ChuanBi   (test
 |---|---|
 | [`CLAUDE.md`](CLAUDE.md) | Luật làm việc trong repo, kiến trúc, cách kiểm tra |
 | [`docs/STATUS.md`](docs/STATUS.md) | Đang ở đâu, làm gì tiếp |
-| [`docs/SPEC.md`](docs/SPEC.md) | Quyết định đã chốt (D1–D87), các luồng nạp / dọn / rút, chat, log, kiến trúc, lộ trình, rủi ro |
+| [`docs/SPEC.md`](docs/SPEC.md) | Quyết định đã chốt (D1–D88), các luồng nạp / dọn / rút, chat, log, kiến trúc, lộ trình, rủi ro |
 | [`docs/GIAO_DICH.md`](docs/GIAO_DICH.md) | Hợp đồng giao thức giao dịch (gói 37, 43–46, 56–58), rương, tách chồng — kèm nguồn và mức chắc chắn |
 | [`docs/TEST_TAY.md`](docs/TEST_TAY.md) | Kết quả test tay trên server chính (P0a) |
 | [`docs/TEST_2CHANG.md`](docs/TEST_2CHANG.md) | Checklist buổi test 2 chặng |

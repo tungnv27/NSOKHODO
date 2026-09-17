@@ -20,6 +20,12 @@ namespace NSOKHODO.Controller
         /// <summary>So mon toi da mot lan dat. Client goc tao mang 12 o va tran neu n &gt; 12.</summary>
         public const int MAX_MON = 12;
 
+        /// <summary>
+        /// So luong toi da MOT o khi giao dich: server chinh khong cho giao o tu 30.000 tro len, trong khi mot chong
+        /// trong tui / ruong gop duoc toi 32.000 (user 17/09, M30). Client goc khong kiem - chong lon phai tach truoc.
+        /// </summary>
+        public const int MAX_SO_LUONG = 29999;
+
         public TradeHandler(GameStateManager state, TradeState trade)
         {
             _state = state;

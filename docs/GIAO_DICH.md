@@ -165,6 +165,7 @@ Nguồn: `217` [BC]; khớp `251` [CODE]. Thứ tự "8/9 trước 58" là [SUY]
 | Một bên rời khu / thoát trong lúc đã khoá | Phiên tự huỷ, đồ còn nguyên | T6 |
 | Giao dịch một chiều (một bên khoá rỗng) | Được | T7 |
 | Trần xu mỗi nhân vật | **2 tỷ** | T14 |
+| Số lượng **một ô** khi giao dịch | **≤ 29.999**; ô 30.000 trở lên server không cho giao dịch. Một chồng trong túi / rương gộp được tới **32.000** → chồng lớn phải tách trước (D88) | M30 [USER] |
 | Chat riêng tới acc chưa kết bạn | Nhận được, nhưng **phải gửi không dấu** | T10 |
 | Chat khu 5 giây/lần có tem `@NNN` ở đầu | Không bị chặn (thử 3 phút) | T11 |
 | Bán đồ cho NPC | **Không bán được gì** | T12 |
@@ -299,6 +300,7 @@ Kế hoạch đo: `SPEC.md` §13 (P0a test tay — ✅ xong 2026-09-16; P0b đo 
 | **M27** | **Mời người đang giao dịch với người khác** | ✅ Server trả *"Người chơi đang chờ hoàn thành một giao dịch khác."*, lời mời **không tới**. Mời lại sau **3 s** và **7 s** (người kia đã rảnh) → **tới ngay**, không có câu khoá 30 s [CHẠY 17/09 11:02, ba acc tungkhodo7/8/9]. → Phiên giao dịch mời lại sau 3 s (D87); người chơi mời trúng lúc Leader đang chuyển đồ chỉ cần bấm lại |
 | **M28** | **Bị từ chối và nhận-rồi-huỷ khác nhau thế nào** | ✅ **Bot từ chối** (gói 56): người mời mời lại sau 4 s và 9 s đều nhận *"Bạn đã gởi yêu cầu giao dịch. Sau 30 giây nữa mới được gởi tiếp"*; 37 s sau mới tới [CHẠY 17/09 11:18]. **Phiên đã mở rồi bên nhận huỷ** (57): mời lại sau 1 s, 3 s, 7 s đều tới [CHẠY 11:01–11:03]; Leader nhận rồi huỷ ngay khi khung mở → người chơi mời lại sau 3 s tới [CHẠY 11:37]. → D87 |
 | **M29** | **Chỗ đứng cạnh Leader ở Làng Tone khu 0 + tốc độ bot↔bot** | ✅ Leader đứng (365, 216). **x = 335 không phải đất** (mép tầng): clone đi tới (335, 216) → server kéo xuống (335, 288) (`[Pos] cmd52 … lech 0,72`), người khác vẫn thấy (335, 216); Leader mời 4 lần đều *"Khoảng cách quá xa"* (hai lần chạy 11:14, 11:30). **x = 395** cùng tầng: mọi lượt đạt. Clone đi ngay ~1 s sau khi vào khu thì có lúc cả khu vẫn thấy nó ở điểm vào (420) trong khi nó tưởng đã tới 395. Giao dịch bot↔bot 12 món: **2–3 s** (11 lượt) [CHẠY 17/09]. → D86: chỗ đứng xét cờ đất của ô bản đồ, chờ 2,5 s rồi mới đi, Leader lại gần theo toạ độ chính nó thấy |
+| **M30** | **Số lượng tối đa một ô khi giao dịch** | 🟡 User (17/09): **29.999** giao dịch được, **30.000** thì game không cho; chồng xếp trong túi / rương gộp tối đa **32.000**. Client 251 không có luật này (không có hằng 29999 / 30000 / 32000 nào liên quan) → server chặn. Server báo câu gì khi đặt ô 30.000: **chưa đo** (kho chưa có chồng nào quá 146). → D88 |
 
 ## 10. Sai sót tài liệu đã phát hiện (chưa sửa ở nguồn)
 
