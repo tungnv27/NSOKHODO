@@ -32,8 +32,15 @@ namespace NSOKHODO.UI
             _gridAcc.CellValueNeeded += GridAccValueNeeded;
             _gridAcc.CellFormatting += (s, e) =>
             {
+                if (e.RowIndex < 0 || e.RowIndex >= Accounts.Count) return;
+                // Chưa cài khu chính = cả kho đứng im: tô đỏ cho dễ thấy (user 17/09 không nhận ra).
+                if (e.ColumnIndex == (int)CotAcc.TrangThaiKho)
+                {
+                    if (_cfg.KhuChinh < 0) { e.CellStyle.BackColor = Color.FromArgb(255, 220, 220); e.CellStyle.ForeColor = Color.DarkRed; }
+                    return;
+                }
                 // Chờ lượt login (Cài đặt → Kho → Đăng nhập) = vàng nhạt, như NSOLITEPRO.
-                if (e.RowIndex < 0 || e.RowIndex >= Accounts.Count || e.ColumnIndex != (int)CotAcc.KetNoi) return;
+                if (e.ColumnIndex != (int)CotAcc.KetNoi) return;
                 var c = ClientCua(Accounts[e.RowIndex]);
                 if (c != null && c.WaitingLoginSlot) e.CellStyle.BackColor = Color.FromArgb(255, 255, 220);
             };

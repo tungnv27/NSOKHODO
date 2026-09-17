@@ -23,6 +23,7 @@ namespace NSOKHODO.UI
 
         private static readonly string[][] TEP_LOG =
         {
+            new[] { "Dễ đọc: ai giao gì cho ai (sukien.log)", NhatKy.SU_KIEN },
             new[] { "Giao dịch (giaodich.csv)", NhatKy.GIAO_DICH },
             new[] { "Lệnh rút (lenh.csv)", NhatKy.LENH },
             new[] { "Chat (chat.log)", NhatKy.CHAT },
@@ -39,7 +40,7 @@ namespace NSOKHODO.UI
             _dtNgay = new DateTimePicker { Left = 48, Top = 6, Width = 110, Format = DateTimePickerFormat.Custom, CustomFormat = "dd/MM/yyyy" };
             thanh.Controls.Add(_dtNgay);
             thanh.Controls.Add(new Label { Text = "Loại:", Left = 168, Top = 9, Width = 36 });
-            _cbTepLog = new ComboBox { Left = 206, Top = 6, Width = 170, DropDownStyle = ComboBoxStyle.DropDownList };
+            _cbTepLog = new ComboBox { Left = 206, Top = 6, Width = 170, DropDownStyle = ComboBoxStyle.DropDownList, DropDownWidth = 260 };
             foreach (var t in TEP_LOG) _cbTepLog.Items.Add(t[0]);
             _cbTepLog.SelectedIndex = 0;
             thanh.Controls.Add(_cbTepLog);

@@ -4,9 +4,10 @@ Kho đồ chung cho Ninja School Online (server chính TeaMobi): khoảng 10 acc
 Làng Tone giữ đồ hộ. Người chơi chỉ nhắn tin và giao dịch với **một acc Leader**. Tool biết tổng kho
 có gì, và khi cần thì tự chọn clone giao đồ cho người nhận.
 
-**Trạng thái (2026-09-17 0h):** spec v1.3 + vòng 11 · test tay xong · **đã code P1–P4 và test sống
+**Trạng thái (2026-09-17 10h30):** spec v1.3 + vòng 11 · test tay xong · **đã code P1–P4 và test sống
 trên server chính** (`docs/TEST_2CHANG.md` đầu file) · đã sửa các lỗi user gặp khi dùng thật (giao 30 món, đơn nhiều
-ID, giao diện giật, giới hạn login, nhân vật "bay", clone kẹt túi + rương, chọn khu giao) · còn phần giao diện cho user · code chưa commit.
+ID, giao diện giật, giới hạn login, nhân vật "bay", clone kẹt túi + rương, chọn khu giao) · **vòng 12:** gom đồ xếp chồng về một nick, cửa xả (giao thẳng vào clone),
+log dễ đọc · còn phần giao diện cho user.
 
 ## Chạy
 
@@ -26,7 +27,9 @@ powershell -ExecutionPolicy Bypass -File tools\kiemtra\song.ps1 -ChuanBi   (test
 
 1. Thêm acc → tab **Acc**, chuột phải → *Đặt làm Leader* (và *dự phòng*).
 2. **Cài đặt → Kho:** khu chính, khu phụ, tên **Chủ kho**. **▶ Chạy**.
-3. Nạp: mời Leader giao dịch. Rút: tab **Tổng kho** → Điều phối → **Giao ngay** (một món) hoặc
+3. Nạp: mời Leader giao dịch (nhiều đồ: nhắn `xa` rồi giao thẳng cho clone được báo). Khung log dưới cùng mặc định
+   chỉ hiện dòng dễ đọc "ai → ai: món"; tick **Chi tiết** để xem log kỹ thuật.
+   Rút: tab **Tổng kho** → Điều phối → **Giao ngay** (một món) hoặc
    **+ Vào đơn** nhiều món rồi **Giao đơn** (ô **Khu giao**: −1 = khu chính), hoặc nhắn riêng Leader:
 
 | Lệnh (chỉ Chủ kho) | Việc |
@@ -38,6 +41,7 @@ powershell -ExecutionPolicy Bypass -File tools\kiemtra\song.ps1 -ChuanBi   (test
 | `lay goi <tên> [khu N] [cho <tên>]` · `goi` | rút cả gói · liệt kê gói |
 | `tiep [#số]` · `huy [#số]` | chạy tiếp lệnh tạm dừng · huỷ lệnh của mình |
 | `theo <id> [N]` · `botheo <id>` | theo dõi món |
+| `xa` · `xa xong` | mở / đóng **cửa xả**: 3 clone đứng cạnh Leader nhận đồ thẳng của bạn (tự mở khi Leader đầy mà bạn mời) |
 
 ## Tài liệu
 
@@ -45,7 +49,7 @@ powershell -ExecutionPolicy Bypass -File tools\kiemtra\song.ps1 -ChuanBi   (test
 |---|---|
 | [`CLAUDE.md`](CLAUDE.md) | Luật làm việc trong repo, kiến trúc, cách kiểm tra |
 | [`docs/STATUS.md`](docs/STATUS.md) | Đang ở đâu, làm gì tiếp |
-| [`docs/SPEC.md`](docs/SPEC.md) | Quyết định đã chốt (D1–D71), các luồng nạp / dọn / rút, chat, log, kiến trúc, lộ trình, rủi ro |
+| [`docs/SPEC.md`](docs/SPEC.md) | Quyết định đã chốt (D1–D85), các luồng nạp / dọn / rút, chat, log, kiến trúc, lộ trình, rủi ro |
 | [`docs/GIAO_DICH.md`](docs/GIAO_DICH.md) | Hợp đồng giao thức giao dịch (gói 37, 43–46, 56–58), rương, tách chồng — kèm nguồn và mức chắc chắn |
 | [`docs/TEST_TAY.md`](docs/TEST_TAY.md) | Kết quả test tay trên server chính (P0a) |
 | [`docs/TEST_2CHANG.md`](docs/TEST_2CHANG.md) | Checklist buổi test 2 chặng |

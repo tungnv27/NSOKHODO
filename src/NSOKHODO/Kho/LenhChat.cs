@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace NSOKHODO.Kho
 {
-    public enum LoaiLenh { Khong = 0, Kho, Nap, Tim, Co, Lay, LayGoi, Goi, Tiep, Huy, Theo, BoTheo, Loi }
+    public enum LoaiLenh { Khong = 0, Kho, Nap, Tim, Co, Lay, LayGoi, Goi, Tiep, Huy, Theo, BoTheo, Xa, XaXong, Loi }
 
     /// <summary>Mot lenh chat rieng cua Chu kho da doc xong (SPEC §9.4).</summary>
     public sealed class LenhChat
@@ -47,6 +47,12 @@ namespace NSOKHODO.Kho
                     return r;
                 case "goi":
                     r.Loai = tc.Count == 1 ? LoaiLenh.Goi : LoaiLenh.Khong;
+                    return r;
+                case "xa":
+                    // D82: mo "cua xa" - giao thang vao clone khi co nhieu do (Leader day phai cho don kho).
+                    if (tc.Count == 1) r.Loai = LoaiLenh.Xa;
+                    else if (tc.Count == 2 && tc[1] == "xong") r.Loai = LoaiLenh.XaXong;
+                    else return Sai(r, "xa | xa xong");
                     return r;
                 case "tim":
                     if (tc.Count < 2) return Sai(r, "tim <tu khoa>");

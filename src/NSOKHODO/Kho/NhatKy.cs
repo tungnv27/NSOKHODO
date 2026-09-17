@@ -27,6 +27,8 @@ namespace NSOKHODO.Kho
         public const string CHAT = "chat.log";
         public const string LENH = "lenh.csv";
         public const string HEX = "hex.log";
+        /// <summary>D83: dong de doc cho nguoi dung thuong (ai giao gi cho ai) - co dau, khong ma loi.</summary>
+        public const string SU_KIEN = "sukien.log";
 
         private const long MOT_PHAN_TOI_DA = 50L * 1024 * 1024;
 
@@ -78,6 +80,11 @@ namespace NSOKHODO.Kho
         public static void App(string acc, string nhom, string noiDung)
         {
             Day(APP, string.Format("{0} [{1}] [{2}] {3}", Gio(), acc ?? "-", nhom ?? "-", noiDung));
+        }
+
+        public static void SuKien(string dong)
+        {
+            Day(SU_KIEN, DateTime.Now.ToString("HH:mm:ss") + "  " + dong);
         }
 
         /// <summary>Dong app.log da dinh dang san (vd log gop cua fleet da co [acc] o dau).</summary>

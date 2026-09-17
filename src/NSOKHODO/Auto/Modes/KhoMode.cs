@@ -180,7 +180,7 @@ namespace NSOKHODO.Auto
             // truoc day thieu mot trong hai la CA kho dung im, ke ca Leader (user test 16/09).
             if (cfg.KhuChinh < 0)
             {
-                SetActivity("Chưa cài khu chính");
+                SetActivity("Chưa cài khu chính (Cài đặt → Kho)");
                 return Nghi("chua cai khu chinh trong Cai dat", 3000);
             }
             int khu = dp.KhuDungCho(Client);
@@ -351,11 +351,28 @@ namespace NSOKHODO.Auto
         private int ViecDoiNhan(KhoDieuPhoi dp, KhoConfig cfg, CharacterState mc)
         {
             int ms;
-            if (!VeDungKhu(cfg.Map, cfg.KhuChinh, out ms)) return ms;
+            var v = _viec;
+            // Luot gom (D81) dien ra o khu cua clone, khong phai khu chinh.
+            int khu = v.Khu >= 0 ? v.Khu : cfg.KhuChinh;
+            if (!VeDungKhu(cfg.Map, khu, out ms)) return ms;
+            if (v.TuNguoi != null)
+            {
+                // D82: cho Chu kho xa do thang vao clone - dung thanh hang canh cho Leader cho de tim.
+                if ((v.DungX != 0 || v.DungY != 0) && _diToiLan < 10 && !Client.DangGiaoDich
+                    && (Math.Abs(mc.Cx - v.DungX) > 20 || Math.Abs(mc.Cy - v.DungY) > CUNG_TANG_Y))
+                {
+                    _diToiLan++;
+                    _nav.CharBurstMove(v.DungX, v.DungY);
+                    return Nghi("toi cho dung cho xa", 800);
+                }
+                v.TienDo = "chờ " + v.TuNguoi + " mời giao dịch";
+                if (!Client.DangGiaoDich) Heartbeat(mc);
+                return Nghi("cho chu kho xa do", 300);
+            }
             // DUNG YEN: bot giao (Leader) se tu toi sat. Neu ca hai cung di ve phia nhau thi moi ben
             // nhay toi cho CU cua ben kia -> doi cho cho nhau mai khong gap.
-            var bot = dp.TimNguoiTheoAcc(_viec.TuBotAcc);
-            _viec.TienDo = bot == null ? "chờ thấy bot giao" : "đứng chờ được mời";
+            var bot = dp.TimNguoiTheoAcc(v.TuBotAcc, khu);
+            v.TienDo = bot == null ? "chờ thấy bot giao" : "đứng chờ được mời";
             if (!Client.DangGiaoDich) Heartbeat(mc);
             return Nghi("cho bot giao moi", 300);
         }

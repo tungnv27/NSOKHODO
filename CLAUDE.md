@@ -10,7 +10,7 @@ Tool biết tổng kho, nhận lệnh rút (tool hoặc chat), tự chọn acc �
 chồng rồi giao thẳng cho người nhận.
 
 > **Đầu mỗi session:** đọc `docs/STATUS.md` trước, rồi tóm tắt ngắn cho user "đang ở đâu / làm gì
-> tiếp" trước khi viết code. Thiết kế đầy đủ: `docs/SPEC.md` (quyết định D1–D79).
+> tiếp" trước khi viết code. Thiết kế đầy đủ: `docs/SPEC.md` (quyết định D1–D85).
 
 ## Phạm vi — ranh giới cứng
 
@@ -90,7 +90,7 @@ Không có test framework. `tools/kiemtra/` là bộ **harness** nạp thẳng `
 
 | File | Vai |
 |---|---|
-| `KhoSong` | kho **không giao diện**, dựng y như `MainForm` (fleet + điều phối + nhật ký). Lệnh qua `song\lenh-kho.txt` (`rut`, `rutn <người nhận> tpl:cap:sl,…` = đơn nhiều món, `rutk <khu> <tpl> <cap> <sl> <người nhận>` = giao ở khu riêng, `tiep`, `huy`, `nha`, `nhanlai`, `dungacc`, `chayacc`, `cfg`, `dung`); trạng thái ra `song\trangthai.txt` mỗi 5 giây |
+| `KhoSong` | kho **không giao diện**, dựng y như `MainForm` (fleet + điều phối + nhật ký). Lệnh qua `song\lenh-kho.txt` (`rut`, `rutn <người nhận> tpl:cap:sl,…` = đơn nhiều món, `rutk <khu> <tpl> <cap> <sl> <người nhận>` = giao ở khu riêng, `tiep`, `huy`, `nha`, `nhanlai`, `dungacc`, `chayacc`, `cfg <Khoá> <giá trị>` (vd `cfg ChuKho tungkhodo9` để acc người chơi ra lệnh chat, `cfg NguongNhan 31` để Leader "đầy"), `dung`); trạng thái ra `song\trangthai.txt` mỗi 5 giây; dòng `[SK]` = log dễ đọc (D83) |
 | `NguoiChoi` | một acc **của user** đóng vai người ngoài (tiến trình riêng → không có điều phối → mode kho đứng im): đi khu, nạp, tự nhận, mời, chat riêng, tách chồng, vào lại, `tui` (in túi kèm cờ hạn), `theo <tên> <giây>` (in toạ độ người khác mỗi lần đổi), `nhay`/`nhayx <d,d,..> <gap> [cuoi]` (thử gói di chuyển — M23) |
 
 - Acc người chơi **tự nhận mọi lời mời** khi `nhan on` → người lạ có thể đưa đồ vào (17/09 đã gặp). Xong việc thì `nhan off`.
@@ -159,8 +159,8 @@ KhoDieuPhoi (1 luồng, nhịp 1 s) <── LayViec / XetLoiMoi / TimNguoi ─�
 | File | Nội dung |
 |---|---|
 | `docs/STATUS.md` | **ảnh chụp trạng thái — ĐỌC ĐẦU TIÊN** |
-| `docs/SPEC.md` | thiết kế đã chốt, quyết định D1–D79, lộ trình, rủi ro |
-| `docs/GIAO_DICH.md` | hợp đồng giao thức giao dịch / rương / tách chồng + bảng đo M1–M24 |
+| `docs/SPEC.md` | thiết kế đã chốt, quyết định D1–D85, lộ trình, rủi ro |
+| `docs/GIAO_DICH.md` | hợp đồng giao thức giao dịch / rương / tách chồng + bảng đo M1–M26 |
 | `docs/TEST_TAY.md` | kết quả test tay trên server chính (T0–T14) |
 | `docs/TEST_2CHANG.md` | checklist buổi test 2 chặng |
 | `docs/NGUON_GOC.md` | lấy gì từ đâu, sửa gì trong lõi |

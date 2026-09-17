@@ -92,6 +92,7 @@ static class KhoSong
         _fleet = new FleetManager();
         _dp = new KhoDieuPhoi(_fleet, () => _kho, _cfg);
         _dp.OnLog += s => In("[DP] " + s);
+        _dp.OnSuKien += s => In("[SK] " + s);   // D83: dong de doc (ai giao gi cho ai)
         _dp.BatDau();
         _fleet.OnLog += s => { NhatKy.AppTho(s); In(s); };
 

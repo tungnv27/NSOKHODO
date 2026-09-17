@@ -50,7 +50,9 @@ namespace NSOKHODO.UI
         private readonly Timer _tickLog = new Timer();
         private DateTime _luuThongKeLuc = DateTime.MinValue;
 
-        private readonly ConcurrentQueue<string> _hangLog = new ConcurrentQueue<string>();
+        // Moi dong: (chu, de doc). De doc = dong cho nguoi dung thuong (D83) - khung log mac dinh chi hien loai nay.
+        private readonly ConcurrentQueue<KeyValuePair<string, bool>> _hangLog = new ConcurrentQueue<KeyValuePair<string, bool>>();
+        private CheckBox _chkLogChiTiet;
         private readonly bool _tuChay;
 
         /// <summary>Bảng account → client, làm mới mỗi giây (xem NSOBAOTATL: đừng gọi Find() từng ô).</summary>
@@ -90,13 +92,14 @@ namespace NSOKHODO.UI
             NhatKy.App("-", "App", "Mo NSOKHODO, danh sach " + AppPaths.ListName + ", " + Accounts.Count + " acc");
 
             _dp = new KhoDieuPhoi(_fleet, () => _config.Accounts, _cfg);
-            _dp.OnLog += s => XepLog(s, false);
+            _dp.OnLog += s => XepLogKyThuat(s, false);
+            _dp.OnSuKien += s => XepLog(s, false);
             _dp.BatDau();
 
             BuildUi();
 
             // CHỈ một đường: FleetManager đã nối OnLog của từng client vào OnLog của fleet.
-            _fleet.OnLog += s => XepLog(s, true);
+            _fleet.OnLog += s => XepLogKyThuat(s, true);
 
             _tick.Interval = 1000;
             _tick.Tick += (s, e) =>
@@ -183,9 +186,18 @@ namespace NSOKHODO.UI
             var dauLog = new Panel { Dock = DockStyle.Top, Height = 24, BackColor = Color.FromArgb(40, 44, 52) };
             dauLog.Controls.Add(new Label
             {
-                Text = "Log", Left = 6, Top = 4, Width = 60, ForeColor = Color.Gainsboro,
+                Text = "Log", Left = 6, Top = 4, Width = 40, ForeColor = Color.Gainsboro,
                 Font = new Font(Font, FontStyle.Bold),
             });
+            // D83 (user 17/09: "ai giao gi cho ai kho doc voi nguoi dung thuong"): mac dinh chi hien dong de doc;
+            // tick thi hien ca dong ky thuat cua tung acc nhu truoc.
+            _chkLogChiTiet = new CheckBox
+            {
+                Text = "Chi tiết (kỹ thuật)", Left = 52, Top = 3, Width = 160, ForeColor = Color.Gainsboro,
+                BackColor = Color.Transparent,
+            };
+            _chkLogChiTiet.CheckedChanged += (s, e) => { if (!_logThuGon) VeLaiLog(); else _logCanVeLai = true; };
+            dauLog.Controls.Add(_chkLogChiTiet);
             _nutThuLog = new Button
             {
                 Text = "Thu gọn", Width = 80, Height = 20, Top = 2, FlatStyle = FlatStyle.Flat,
@@ -304,7 +316,8 @@ namespace NSOKHODO.UI
                 string.IsNullOrEmpty(leader) ? "(chưa cài)" : NameMask.Apply(leader),
                 online, Accounts.Count, DisconnectStats.TongTatCa(),
                 (_dp.KhoDay ? "   │   KHO ĐẦY" : "")
-                + (_cfg.KhuChinh < 0 ? "   │   CHƯA CÀI KHU CHÍNH (Cài đặt → Kho)" : ""));
+                + (_cfg.KhuChinh < 0 ? "   │   CHƯA CÀI KHU CHÍNH (Cài đặt → Kho)" : "")
+                + (_dp.MoTaXa.Length > 0 ? "   │   " + (NameMask.Enabled ? "Cửa xả đang mở" : _dp.MoTaXa) : ""));
             if (dong != _status.Text) _status.Text = dong;
         }
 
@@ -375,16 +388,41 @@ namespace NSOKHODO.UI
             {
                 if (MessageBox.Show(this, "Chưa chọn dòng nào ở tab Acc. Chạy TẤT CẢ tài khoản (trừ clone đang nhả)?",
                         "Chạy", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                {
                     ChayTatCa("nut Chay");
+                    NhacKhuChinh(true);
+                }
                 return;
             }
             ChayDs(sel);
+            NhacKhuChinh(true);
         }
 
         private void ChayTatCa(string nguon)
         {
             ChayDs(new List<AccountConfig>(Accounts));
             NhatKy.App("-", "App", "Chay tat ca (" + nguon + ")");
+            if (nguon == "--chay") NhacKhuChinh(false);
+        }
+
+        /// <summary>
+        /// Khu chính −1 = mọi bot đăng nhập rồi ĐỨNG IM (không đọc rương, không giao nhận). Máy mới chỉ chép exe
+        /// sẽ gặp (user 17/09) mà dòng trên thanh trạng thái không đủ nổi. <paramref name="hoi"/> = hiện hộp thoại.
+        /// </summary>
+        private void NhacKhuChinh(bool hoi)
+        {
+            if (_cfg.KhuChinh >= 0) return;
+            XepLog("CHƯA CÀI KHU CHÍNH: bot đăng nhập nhưng đứng im — không đọc rương, không nhận / giao đồ. "
+                   + "Cài ở Cài đặt → Kho.", false);
+            if (!hoi) return;
+            if (MessageBox.Show(this,
+                    "Chưa cài Khu chính.\n\nBot vẫn đăng nhập nhưng ĐỨNG IM: không đọc rương, không nhận / giao đồ.\n\n"
+                    + "Mở Cài đặt → Kho để cài ngay?",
+                    "Chưa cài khu chính", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                return;
+            _tabs.SelectedTab = _tabCaiDat;
+            if (_tabsCaiDat != null) _tabsCaiDat.SelectedTab = _tcKho;
+            if (_numKhuChinh != null) _numKhuChinh.Select();
         }
 
         /// <summary>Mở so le; BỎ QUA clone đang nhả (user đang đăng nhập tay — hai bên sẽ đá nhau).</summary>
@@ -540,36 +578,67 @@ namespace NSOKHODO.UI
 
         // ==================== LOG ====================
 
-        /// <summary>Gọi được từ MỌI luồng — chỉ xếp hàng. <paramref name="ghiFile"/>: dòng chưa có trong app.log.</summary>
+        /// <summary>
+        /// Dòng DỄ ĐỌC (thông báo của tool, sự kiện kho D83). Gọi được từ MỌI luồng — chỉ xếp hàng.
+        /// <paramref name="ghiFile"/>: dòng chưa có trong app.log.
+        /// </summary>
         private void XepLog(string s, bool ghiFile)
+        {
+            XepDong(s, ghiFile, true);
+        }
+
+        /// <summary>Dòng kỹ thuật của từng acc / bộ điều phối — chỉ hiện khi tick "Chi tiết".</summary>
+        private void XepLogKyThuat(string s, bool ghiFile)
+        {
+            XepDong(s, ghiFile, false);
+        }
+
+        private void XepDong(string s, bool ghiFile, bool deDoc)
         {
             if (string.IsNullOrEmpty(s)) return;
             if (ghiFile) NhatKy.AppTho(s);
             // Đóng giờ LÚC XẢY RA (trước đây đóng lúc hiện -> lệch tới 1 giây).
-            if (_hangLog.Count < 20000) _hangLog.Enqueue(DateTime.Now.ToString("HH:mm:ss") + "  " + s);
+            if (_hangLog.Count < 20000)
+                _hangLog.Enqueue(new KeyValuePair<string, bool>(DateTime.Now.ToString("HH:mm:ss") + "  " + s, deDoc));
         }
+
+        private bool LogChiTiet { get { return _chkLogChiTiet != null && _chkLogChiTiet.Checked; } }
 
         // Khung log: giữ tối đa LOG_GIU dòng gần nhất ở bộ nhớ; ô chữ chỉ nối thêm, quá LOG_TOI_DA mới dựng lại
         // MỘT lần (tắt vẽ trong lúc dựng). Trước đây mỗi giây tách toàn bộ chữ (_log.Lines) và gán lại -> giật.
+        // Hai bộ đệm: mọi dòng / chỉ dòng dễ đọc (dòng kỹ thuật nhiều gấp chục lần - chung một bộ đệm thì dòng dễ đọc
+        // bị đẩy ra khỏi 300 dòng rất nhanh).
         private readonly Queue<string> _dongLog = new Queue<string>();
+        private readonly Queue<string> _dongDeDoc = new Queue<string>();
         private int _soDongTrongO;
         private bool _logCanVeLai;
         private const int LOG_GIU = 300, LOG_TOI_DA = 600;
 
         private void RutHangLog()
         {
+            // Vừa mở lại cửa sổ / bung khung log: vẽ lại ngay, không đợi dòng mới (chế độ dễ đọc có khi vài phút mới có dòng).
+            if (_logCanVeLai && !_logThuGon && WindowState != FormWindowState.Minimized) VeLaiLog();
             if (_hangLog.IsEmpty) return;
             var sb = new System.Text.StringBuilder();
-            string s;
-            int n = 0;
-            while (n < 1000 && _hangLog.TryDequeue(out s))
+            KeyValuePair<string, bool> kv;
+            int n = 0, hien = 0;
+            bool chiTiet = LogChiTiet;
+            while (n < 1000 && _hangLog.TryDequeue(out kv))
             {
-                _dongLog.Enqueue(s);
-                if (_dongLog.Count > LOG_GIU) _dongLog.Dequeue();
-                sb.AppendLine(s);
                 n++;
+                _dongLog.Enqueue(kv.Key);
+                if (_dongLog.Count > LOG_GIU) _dongLog.Dequeue();
+                if (kv.Value)
+                {
+                    _dongDeDoc.Enqueue(kv.Key);
+                    if (_dongDeDoc.Count > LOG_GIU) _dongDeDoc.Dequeue();
+                }
+                if (!chiTiet && !kv.Value) continue;
+                sb.AppendLine(kv.Key);
+                hien++;
             }
-            if (n == 0) return;
+            if (hien == 0) return;
+            n = hien;
             if (_logThuGon || WindowState == FormWindowState.Minimized) { _logCanVeLai = true; return; }
             if (_logCanVeLai || _soDongTrongO + n > LOG_TOI_DA) VeLaiLog();
             else
@@ -585,8 +654,9 @@ namespace NSOKHODO.UI
             SendMessage(_log.Handle, WM_SETREDRAW, IntPtr.Zero, IntPtr.Zero);
             try
             {
-                _log.Text = _dongLog.Count == 0 ? "" : string.Join(Environment.NewLine, _dongLog) + Environment.NewLine;
-                _soDongTrongO = _dongLog.Count;
+                var ds = LogChiTiet ? _dongLog : _dongDeDoc;
+                _log.Text = ds.Count == 0 ? "" : string.Join(Environment.NewLine, ds) + Environment.NewLine;
+                _soDongTrongO = ds.Count;
                 _log.SelectionStart = _log.TextLength;
                 _log.ScrollToCaret();
             }

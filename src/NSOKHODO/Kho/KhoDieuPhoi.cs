@@ -39,14 +39,25 @@ namespace NSOKHODO.Kho
     ///
     /// <para><b>Thu tu moi nhip:</b> chup client → lenh tu giao dien → su kien (chat / phien / viec)
     /// → cap nhat so kho → bau Leader → tinh bang tong → don viec treo → nha clone → lenh rut →
-    /// don kho Leader → bao tri clone → theo doi / ke Rac / bao cao ngay → xa chat → luu dia.</para>
+    /// don kho Leader → cua xa (D82) → bao tri clone → gom do xep chong (D81) → theo doi / ke Rac / bao cao ngay
+    /// → xa chat → luu dia.</para>
     /// </summary>
     public sealed class KhoDieuPhoi : IDisposable
     {
         public static KhoDieuPhoi HienTai { get; private set; }
 
         private const int NHIP_MS = 1000;
-        private const string RUT = "rut", DON = "don", DON_XU = "donxu", TRA = "tra";
+        private const string RUT = "rut", DON = "don", DON_XU = "donxu", TRA = "tra", GOM = "gom";
+
+        /// <summary>D82: cua xa mo bao lau (tinh tu lan nhan cuoi) va toi da bao nhieu clone dung cho cung luc.</summary>
+        private const int XA_PHUT = 10, XA_SO_CLONE = 3;
+        /// <summary>
+        /// D82: clone o cua xa khi tui con nhan duoc tron mot luot (12 o, khong tinh o chua); duoi muc do thi roi cua di cat
+        /// ruong. Cung mot nguong vao / ra: nguoi choi giao 12 mon moi luot, clone con 7 o thi luot sau bi tu choi.
+        /// </summary>
+        private const int XA_TUI_TOI_THIEU = 12;
+        /// <summary>D82: clone duoc giao cua xa ma qua bay nhieu ms chua vao duoc khu chinh (khu day) thi bo.</summary>
+        private const int XA_TOI_KHU_MS = 90000;
 
         /// <summary>
         /// So o tui clone LUON de trong khi don kho (D78). User 17/09: tungkhodo6 tui 30/30 (toan da) + ruong
@@ -74,7 +85,10 @@ namespace NSOKHODO.Kho
             public BaoCaoViec Bao;
         }
 
-        /// <summary>Mot luot don kho / don xu: clone sang khu chinh cho (pha 1), Leader giao (pha 2).</summary>
+        /// <summary>
+        /// Mot luot don kho / don xu: clone sang khu chinh cho (pha 1), Leader giao (pha 2). Luot GOM (D81) dung
+        /// lai lop nay: <see cref="Clone"/> = clone giao, <see cref="Dich"/> = clone nhan (<see cref="ViecNhan"/>).
+        /// </summary>
         private sealed class PhienDon
         {
             public string MucDich;
@@ -87,6 +101,21 @@ namespace NSOKHODO.Kho
             public Viec ViecLeader;
             public DateTime TaoLuc = DateTime.Now;
             public int SoLuot;
+            // ---- GOM ----
+            public string Dich;
+            public Viec ViecNhan;
+        }
+
+        /// <summary>D82: "cua xa" - clone dung o khu chinh nhan do thang tu mot Chu kho.</summary>
+        private sealed class PhienXa
+        {
+            public string ChuKho;
+            public DateTime Den;
+            public DateTime MoLuc = DateTime.Now;
+            public readonly List<string> Clone = new List<string>();
+            public int Luot, Mon;
+            public DateTime VangTu = DateTime.MinValue;
+            public bool DaBaoSanSang;
         }
 
         public KhoConfig Cfg { get; private set; }
@@ -96,6 +125,12 @@ namespace NSOKHODO.Kho
 
         /// <summary>Dong log cho o log cua giao dien (da ghi app.log roi - ben nghe KHONG ghi file lan nua).</summary>
         public event Action<string> OnLog;
+
+        /// <summary>
+        /// D83: dong DE DOC cho nguoi dung thuong - ai giao gi cho ai, lenh nao xong / hong (co dau, ten mon that).
+        /// Da ghi sukien.log roi - ben nghe KHONG ghi file lan nua.
+        /// </summary>
+        public event Action<string> OnSuKien;
 
         private readonly FleetManager _fleet;
         private readonly Func<List<AccountConfig>> _dsAcc;
@@ -133,6 +168,19 @@ namespace NSOKHODO.Kho
         // ---- chi luong dieu phoi doc/ghi ----
         private PhienDon _don;
         private DateTime _donNghiDen = DateTime.MinValue;
+        // ---- gom do xep chong (D81) - doc lap voi _don (khong dung toi Leader) ----
+        private PhienDon _gom;
+        private string _gomDich;                          // clone dich cua dot gom dang chay
+        private HashSet<short> _gomLoai = new HashSet<short>();
+        private DateTime _gomDotLuc;
+        private int _gomDotLuot, _gomDotMon;
+        private DateTime _gomNghiDen = DateTime.MinValue;
+        private DateTime _gomXetLuc = DateTime.MinValue;
+        private readonly Dictionary<string, DateTime> _gomTranh = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
+        // ---- cua xa (D82) ----
+        private PhienXa _xa;
+        private volatile string _moTaXa = "";
+        private readonly Dictionary<string, DateTime> _xaTranh = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, DateTime> _nghiBaoTri = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
         private readonly Dictionary<string, DateTime> _nghiNhanDon = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> _canCat = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -419,6 +467,8 @@ namespace NSOKHODO.Kho
 
             if (VaiCua(c) != VaiKho.Leader)
             {
+                var qx = XetMoiXa(c, id);
+                if (qx != null) return qx;
                 GhiHanChe("moiclone|" + acc, 30, acc, "GD", "Tu choi loi moi id " + id + ": chi Leader nhan do");
                 return QuyetDinhLoiMoi.KhongNhan();
             }
@@ -427,7 +477,6 @@ namespace NSOKHODO.Kho
             DateTime giuDen;
             lock (_lk)
             {
-                _moiDenLeaderLuc = DateTime.Now;
                 giuCho = _giuCuaCho;
                 giuDen = _giuCuaDen;
             }
@@ -467,11 +516,20 @@ namespace NSOKHODO.Kho
             if (trong < nguong)
             {
                 if (laChu)
-                    BaoRieng(ten, _khoDay ? "Kho day, chua nhan them duoc" : "Dang don kho, thu lai sau ~30 giay (hoac nhan: nap)", "donkho", 30);
+                {
+                    // D82: Leader day ma Chu kho con do -> mo cua xa (giao thang vao clone) thay vi bat cho don kho.
+                    // MoXa tu bao: danh sach clone, hoac "dang don kho" khi khong clone nao ranh.
+                    string chu = ten;
+                    if (!_khoDay && !dangGiu) Lam(() => MoXa(chu, DateTime.Now, false));
+                    else BaoRieng(ten, _khoDay ? "Kho day, chua nhan them duoc" : "Dang don kho, thu lai sau ~30 giay (hoac nhan: nap)", "donkho", 30);
+                }
                 Ghi(acc, "GD", "Tu choi " + ai + ": tui Leader con " + trong + " o (nguong " + nguong + ")");
                 return QuyetDinhLoiMoi.KhongNhan();
             }
 
+            // Chi danh dau "sap giao dich" khi NHAN: loi moi bi tu choi (Leader day) ma van dat moc thi Chu kho moi lien tuc
+            // lam LeaderRanh() sai mai -> Leader khong bao gio don kho (user 17/09: "nhieu luc con khong don").
+            lock (_lk) _moiDenLeaderLuc = DateTime.Now;
             var qd = new QuyetDinhLoiMoi
             {
                 Nhan = true,
@@ -512,6 +570,54 @@ namespace NSOKHODO.Kho
         }
 
         /// <summary>
+        /// D82: clone dang mo cua xa nhan loi moi cua DUNG Chu kho do. null = clone nay khong mo cua xa cho nguoi
+        /// moi (xet tiep nhu cu). Chay tren luong MODE - chi doc.
+        /// </summary>
+        private QuyetDinhLoiMoi XetMoiXa(NsoClient c, int id)
+        {
+            string acc = c.Config.Username;
+            var v = ViecCua(acc);
+            if (v == null || v.BiHuy || v.Loai != LoaiViec.DoiNhan || v.TuNguoi == null) return null;
+            string ten = TenTheoId(c, id);
+            if (ten != null && !ChuVan.CungTen(ten, v.TuNguoi)) return null;
+            string chu = v.TuNguoi;
+            if (!Cfg.BatNap)
+            {
+                BaoRieng(chu, "Kho dang tat nhan do", "tatnap", 30);
+                return QuyetDinhLoiMoi.KhongNhan();
+            }
+            if (DemTuiTrong(c) - O_CHUA_TUI < 1)
+            {
+                BaoRieng(chu, TenNhanVat(acc) + " het cho, moi GD clone khac", "xaday|" + acc, 30);
+                Ghi(acc, "Xa", "Tu choi " + chu + ": tui con " + DemTuiTrong(c) + " o");
+                return QuyetDinhLoiMoi.KhongNhan();
+            }
+            var qd = new QuyetDinhLoiMoi
+            {
+                Nhan = true,
+                TenMongDoi = ten,
+                ChoMs = Math.Max(10, Cfg.ChoNguoiGiay) * 1000,
+                KiemHang = (xu, mon) => KiemHangXa(c, xu, mon),
+                LaAi = "chukho",
+            };
+            // Chua thay ten (clone vua sang khu): kiem o goi 37 - chi dung Chu kho mo cua moi duoc giao.
+            if (ten == null) qd.KiemTen = x => ChuVan.CungTen(x, chu) ? null : (x ?? "?") + " khong phai " + chu;
+            Ghi(acc, "Xa", "Nhan loi moi xa do cua " + (ten ?? ("id " + id + " (kiem ten o goi 37)")));
+            return qd;
+        }
+
+        /// <summary>D82: nhu nap vao Leader nhung chua lai O_CHUA_TUI o (clone con lay / cat ruong duoc sau do).</summary>
+        public string KiemHangXa(NsoClient c, int xu, MonGiaoDich[] mon)
+        {
+            string loi = KiemHangNap(c, xu, mon);
+            if (loi != null) return loi;
+            int n = mon != null ? mon.Length : 0;
+            int toiDa = DemTuiTrong(c) - O_CHUA_TUI;
+            if (n > toiDa) return "clone nay chi nhan them toi da " + Math.Max(0, toiDa) + " mon";
+            return null;
+        }
+
+        /// <summary>
         /// Tim nguoi o KHU CHINH. Bot cua kho: lay tu chinh no. Nguoi ngoai: nhin qua cac bot dang o khu
         /// chinh, uu tien Leader (clone vua sang khu co the chua thay nguoi dung san).
         /// </summary>
@@ -547,10 +653,19 @@ namespace NSOKHODO.Kho
 
         public PlayerInfo TimNguoiTheoAcc(string username)
         {
+            return TimNguoiTheoAcc(username, Cfg.KhuChinh);
+        }
+
+        /// <summary>Bot cua kho dang dung o khu <paramref name="khu"/> (luot gom D81 o khu cua clone).</summary>
+        public PlayerInfo TimNguoiTheoAcc(string username, int khu)
+        {
             var c = LayClient(username);
-            if (c == null || c.State != ClientState.InGame || !OKhuChinh(c)) return null;
+            if (c == null || c.State != ClientState.InGame || !OKhu(c, khu)) return null;
             return NguoiTuBot(c);
         }
+
+        /// <summary>Mo ta cua xa dang mo cho thanh trang thai (D82). Rong = khong mo.</summary>
+        public string MoTaXa { get { return _moTaXa; } }
 
         // acc -> khu clone dung khi CHUA cai khu phu (khu no dang dung luc moi vao map kho). Song qua
         // dang nhap lai: mode kho tao moi moi lan vao game, nho o mode thi mat.
@@ -643,7 +758,10 @@ namespace NSOKHODO.Kho
             XuLyNha(now);
             XuLyLenh(now);
             XuLyDon(now);
+            XuLyXa(now);
             BaoTriClone(now);
+            // Sau bao tri: clone dich vua nhan xong phai duoc CAT RUONG truoc khi vao luot gom sau.
+            XuLyGom(now);
             if ((now - _theoDoiLuc).TotalSeconds >= 5)
             {
                 _theoDoiLuc = now;
@@ -1025,9 +1143,15 @@ namespace NSOKHODO.Kho
             bool laBot = LaTenBot(kq.DoiPhuong);
             bool laChu = !laBot && Cfg.LaChuKho(kq.DoiPhuong);
             string loai;
-            if (kq.Vai == VaiGiaoDich.Nhan) loai = laBot ? "NHAN_DON" : "NAP";
+            if (kq.Vai == VaiGiaoDich.Nhan)
+            {
+                var vn = ViecCua(acc);
+                if (laBot) loai = vn != null && vn.MucDich == GOM ? "NHAN_GOM" : "NHAN_DON";
+                else loai = LaLeader(acc) ? "NAP" : "XA";   // clone nhan cua nguoi = cua xa (D82)
+            }
             else if (v == null) loai = "GIAO";
-            else loai = v.MucDich == RUT ? "RUT" : v.MucDich == DON_XU ? "DON_XU" : v.MucDich == TRA ? "TRA" : "DON";
+            else loai = v.MucDich == RUT ? "RUT" : v.MucDich == DON_XU ? "DON_XU" : v.MucDich == TRA ? "TRA"
+                      : v.MucDich == GOM ? "GOM" : "DON";
             string soLenh = v != null ? string.Join(" ", v.CacLenh.Select(x => "#" + x).ToArray()) : "";
 
             NhatKy.Csv(NhatKy.GIAO_DICH, kq.BatDau, kq.KetThuc, loai, acc, kq.DoiPhuong, kq.DoiPhuongId, laChu ? "1" : "0",
@@ -1037,6 +1161,7 @@ namespace NSOKHODO.Kho
                 + (kq.ThanhCong ? "XONG" : "HUY [" + kq.MaLoi + "] " + kq.LyDo)
                 + (kq.MonNhan.Length > 0 || kq.XuNhan > 0 ? " | nhan " + kq.MoTaMonNhan() + (kq.XuNhan > 0 ? " + " + kq.XuNhan + " xu" : "") : "")
                 + (kq.ThanhCong && (kq.MonDua.Count > 0 || kq.XuDua > 0) ? " | dua " + kq.MoTaMonDua() + (kq.XuDua > 0 ? " + " + kq.XuDua + " xu" : "") : ""));
+            DeDocPhien(acc, loai, kq, v);
 
             if (kq.Vai == VaiGiaoDich.Nhan && !laBot)
             {
@@ -1053,7 +1178,9 @@ namespace NSOKHODO.Kho
                     }
                     _soLieuDoiLuc = now;
                     if (soMon > 0 || kq.XuNhan > 0)
-                        BaoSuKien(laChu ? kq.DoiPhuong : null, null, "Da nhan " + MoTaNhan(kq) + " tu " + kq.DoiPhuong, true, null, 0);
+                        BaoSuKien(laChu ? kq.DoiPhuong : null, null, (loai == "XA" ? TenNhanVat(acc) + " da nhan " : "Da nhan ")
+                            + MoTaNhan(kq) + " tu " + kq.DoiPhuong, true, null, 0);
+                    if (loai == "XA") SauNhanXa(kq.DoiPhuong, soMon, now);
                 }
                 else if (laChu && (kq.MaLoi == MaLoiGiaoDich.TU_CHOI_HANG || kq.MaLoi == MaLoiGiaoDich.DOI_PHUONG_DAT_QUA))
                 {
@@ -1087,6 +1214,111 @@ namespace NSOKHODO.Kho
             else mon = "";
             if (kq.XuNhan > 0) mon = (mon.Length > 0 ? mon + " + " : "") + ChuVan.SoDep(kq.XuNhan) + " xu";
             return mon;
+        }
+
+        // ---------------- log de doc (D83) ----------------
+
+        /// <summary>Mot dong DE DOC: "[NHAN] noi dung" - sukien.log + khung log che do "De doc".</summary>
+        private void DeDoc(string nhan, string noiDung)
+        {
+            string dong = "[" + nhan + "] " + noiDung;
+            NhatKy.SuKien(dong);
+            var h = OnSuKien;
+            if (h != null)
+            {
+                try { h(dong); } catch { }
+            }
+        }
+
+        /// <summary>Ai giao gi cho ai, sau mot phien giao dich. Phien NHAN cua bot bo qua (phia giao da ghi).</summary>
+        private void DeDocPhien(string acc, string loai, KetQuaGiaoDich kq, Viec v)
+        {
+            string toi = TenNhanVat(acc);
+            string dp = kq.DoiPhuong ?? ("id " + kq.DoiPhuongId);
+            string nhan, tu, den;
+            switch (loai)
+            {
+                case "NAP": nhan = "NẠP"; tu = dp; den = "Leader " + toi; break;
+                case "XA": nhan = "XẢ"; tu = dp; den = toi; break;
+                case "RUT": nhan = "GIAO"; tu = toi; den = dp; break;
+                case "GIAO": nhan = "GIAO"; tu = toi; den = dp; break;
+                case "DON": nhan = "DỌN KHO"; tu = "Leader " + toi; den = dp; break;
+                case "DON_XU": nhan = "DỒN XU"; tu = "Leader " + toi; den = dp; break;
+                case "TRA": nhan = "TRẢ BỚT"; tu = toi; den = "Leader " + dp; break;
+                case "GOM": nhan = "GOM"; tu = toi; den = dp; break;
+                default: return;
+            }
+            bool vao = kq.Vai == VaiGiaoDich.Nhan;
+            var ds = new List<MonDoc>();
+            if (vao) foreach (var m in kq.MonNhan) ds.Add(new MonDoc(m.TemplateId, m.Upgrade, m.Quantity));
+            else foreach (var kv in kq.MonDua) ds.Add(new MonDoc(kv.Value.TemplateId, kv.Value.Upgrade, kv.Value.Quantity));
+            string mon = MonDeDoc(ds, vao ? kq.XuNhan : kq.XuDua);
+            string lenh = v != null && v.CacLenh.Count > 0
+                ? " (lệnh " + string.Join(", ", v.CacLenh.Select(x => "#" + x).ToArray()) + ")" : "";
+            if (kq.ThanhCong)
+            {
+                if (mon.Length > 0) DeDoc(nhan, tu + " → " + den + ": " + mon + lenh);
+                return;
+            }
+            // Hong: chi dong co y nghia voi nguoi dung - nguoi la moi roi thoi (on ao), qua xa (bot tu lai gan).
+            if (kq.MaLoi == MaLoiGiaoDich.QUA_XA) return;
+            if ((loai == "NAP" || loai == "XA") && !Cfg.LaChuKho(dp)) return;
+            DeDoc(nhan, tu + " → " + den + " không thành" + lenh + ": " + LyDoDeDoc(kq.MaLoi, kq.LyDo));
+        }
+
+        public struct MonDoc
+        {
+            public short Tpl;
+            public byte Cap;
+            public int SoLuong;
+            public MonDoc(short tpl, byte cap, int sl) { Tpl = tpl; Cap = cap; SoLuong = Math.Max(1, sl); }
+        }
+
+        /// <summary>D83: "17 Tử tinh thạch cao cấp, 2 Áo choàng +5 + 1.000 xu" - gop cung loai, toi da 6 loai.</summary>
+        public static string MonDeDoc(IEnumerable<MonDoc> ds, long xu)
+        {
+            var gop = new List<MonDoc>();
+            foreach (var m in ds)
+            {
+                int i = gop.FindIndex(x => x.Tpl == m.Tpl && x.Cap == m.Cap);
+                if (i < 0) gop.Add(m);
+                else gop[i] = new MonDoc(m.Tpl, m.Cap, gop[i].SoLuong + m.SoLuong);
+            }
+            var p = new List<string>();
+            foreach (var m in gop.Take(6))
+                p.Add(m.SoLuong + " " + BangMon.Ten(m.Tpl) + (m.Cap > 0 ? " +" + m.Cap : ""));
+            if (gop.Count > 6) p.Add("và " + (gop.Count - 6) + " loại khác");
+            string s = string.Join(", ", p.ToArray());
+            if (xu > 0) s = (s.Length > 0 ? s + " + " : "") + ChuVan.SoDep(xu) + " xu";
+            return s;
+        }
+
+        private static string MonDeDoc(IEnumerable<DongGiao> ds)
+        {
+            return MonDeDoc(ds.Select(d => new MonDoc(d.Khoa.Tpl, d.Khoa.Up, d.SoLuong)), 0);
+        }
+
+        /// <summary>Ma loi -> cau cho nguoi dung thuong.</summary>
+        public static string LyDoDeDoc(string maLoi, string lyDo)
+        {
+            switch (maLoi ?? "")
+            {
+                case MaLoiGiaoDich.HET_GIO_CHO_NHAN_LOI: return "không nhận lời mời giao dịch";
+                case MaLoiGiaoDich.HET_GIO: return "quá giờ chờ";
+                case MaLoiGiaoDich.SAI_DOI_PHUONG: return "đang giao dịch với người khác";
+                case MaLoiGiaoDich.THIEU_O: return "người nhận không đủ ô trống";
+                case MaLoiGiaoDich.DOI_PHUONG_DAT_QUA: return "bên kia đặt nhiều món hơn chỗ trống";
+                case MaLoiGiaoDich.TU_CHOI_HANG: return "không nhận hàng này (" + lyDo + ")";
+                case MaLoiGiaoDich.BI_CHEN: return "bị chen ngang";
+                case MaLoiGiaoDich.KHONG_CO_MON: return "không còn món để giao";
+                case MaLoiGiaoDich.MAT_KET_NOI: return "mất kết nối";
+                case MaLoiGiaoDich.QUA_XA: return "đứng quá xa";
+                case MaLoiGiaoDich.BI_HUY: return "bị huỷ" + (string.IsNullOrEmpty(lyDo) ? "" : " (" + lyDo + ")");
+                case MaLoiViec.KHONG_THAY_NGUOI: return "không thấy người nhận";
+                case MaLoiViec.TUI_DAY: return "túi và rương đầy";
+                case MaLoiViec.HET_HAN: return "quá giờ";
+            }
+            return string.IsNullOrEmpty(lyDo) ? (string.IsNullOrEmpty(maLoi) ? "lỗi" : maLoi) : lyDo;
         }
 
         /// <summary>Chia so mon vua giao cho cac lenh da gop, theo phan giu tren acc giao.</summary>
@@ -1144,6 +1376,10 @@ namespace NSOKHODO.Kho
             if (!GoViec(v.Acc, v)) return;
             string kq = bc.Xong ? "XONG" : ("LOI " + bc.MaLoi + (string.IsNullOrEmpty(bc.LyDo) ? "" : " - " + bc.LyDo));
             Ghi(v.Acc, "Viec", ChuVan.BoDau(v.MoTa) + ": " + kq);
+
+            // --- luot gom (D81) ---
+            var g = _gom;
+            if (g != null && (g.ViecClone == v || g.ViecNhan == v)) SauViecGom(g, v, bc, now);
 
             // --- luot don kho / don xu ---
             var d = _don;
@@ -1360,6 +1596,13 @@ namespace NSOKHODO.Kho
                         TraLoi(gui, tu, ds.Count == 0 ? "Chua co goi rut nao" : "Goi: " + string.Join(", ", ds.ToArray()));
                         break;
                     }
+                case LoaiLenh.Xa:
+                    MoXa(tu, now, true);
+                    break;
+                case LoaiLenh.XaXong:
+                    if (_xa != null && ChuVan.CungTen(_xa.ChuKho, tu)) DongXa("Chủ kho báo xong", now);
+                    else TraLoi(gui, tu, "Khong co cua xa nao dang mo cho ban");
+                    break;
                 case LoaiLenh.Lay:
                     TaoLenh("chat", tu, lc.ChoTen ?? tu, null,
                         new List<DongLenh> { new DongLenh { Tpl = lc.Tpl, Cap = lc.Cap, SoXin = lc.SoLuong } }, now, lc.Khu);
@@ -1691,6 +1934,7 @@ namespace NSOKHODO.Kho
             {
                 Ghi(moi, "Leader", "Doi Leader: " + cu + " -> " + moi);
                 BaoChuKho("Leader moi: " + TenNhanVat(moi) + " (" + TenMap() + " khu " + Cfg.KhuChinh + ")", true, null, 0);
+                DeDoc("LEADER", "Đổi Leader: " + TenNhanVat(cu) + " → " + TenNhanVat(moi));
             }
             else Ghi(moi.Length == 0 ? "-" : moi, "Leader", "Leader: " + (moi.Length == 0 ? "(chua cai / khong co trong danh sach)" : moi));
         }
@@ -1761,6 +2005,7 @@ namespace NSOKHODO.Kho
                 _khoDay = day;
                 if (day) BaoChuKho("KHO DAY - tam ngung nhan do", true, "khoday", 600);
                 else Ghi("-", "Kho", "Kho co cho trong tro lai");
+                DeDoc("KHO", day ? "KHO ĐẦY — tạm ngừng nhận đồ (thêm clone hoặc dọn bớt)" : "Kho có chỗ trống trở lại");
             }
         }
 
@@ -1846,6 +2091,7 @@ namespace NSOKHODO.Kho
                 }
                 Ghi(u, "NHA_CLONE", "Da nha " + u + ": " + MoTaTui(t));
                 BaoChuKho("Da nha " + TenNhanVat(u) + " de don tay", true, null, 0);
+                DeDoc("NHẢ CLONE", "Đã nhả " + TenNhanVat(u) + " để dọn tay (" + MoTaTui(t) + ")");
             }
         }
 
@@ -1888,12 +2134,31 @@ namespace NSOKHODO.Kho
                 ChoCoMatDen = now.AddMinutes(Math.Max(1, Cfg.ChoCoMatPhut)), Khu = khu,
             };
             Hang.Them(l);
+            if (dong.Exists(d => d.Cap >= 0 && KhoaMon.LaThuCuoi(d.Tpl)))
+            {
+                // D80: cap thu cuoi khong doc duoc o ruong / giao dich -> "+cap" bi bo qua; noi ro de Chu kho khong bat ngo.
+                BaoRieng(chuKho, "Luu y: kho khong phan biet cap thu cuoi, lenh #" + l.So + " lay bat ky cap", null, 0);
+                DeDoc("LỆNH #" + l.So, "Lưu ý: kho không phân biệt cấp thú cưỡi — lấy bất kỳ cấp");
+            }
             string thieu = Hang.LapKeHoach(l, So, a => DuocGiao(l, a));
             string mon = l.MoTaMon();
             int khuGiao = KhuGiao(l);
             Ghi("-", "Lenh", string.Format("Lenh #{0} ({1}{2}): {3} cho {4} o khu {5}{6}{7}", l.So, nguon, chuKho != null ? " " + chuKho : "",
                 mon, nguoiNhan, khuGiao, khu >= 0 ? " (chon rieng)" : "", thieu != null ? " | thieu: " + thieu : ""));
+            bool choLeader = thieu != null && ChoLeaderDonCho(l);
+            DeDoc("LỆNH #" + l.So, (nguon == "chat" ? (chuKho ?? "?") + " nhắn" : "Tool") + ": rút " + mon + " cho " + nguoiNhan
+                + (khu >= 0 ? " ở khu " + khuGiao : "") + (thieu != null && !choLeader ? " — thiếu: " + thieu : ""));
 
+            if (choLeader)
+            {
+                l.ChoLeaderDon = true;
+                Ghi("-", "Lenh", "Lenh #" + l.So + ": phan thieu dang tren Leader - cho don sang clone roi giao o khu " + khuGiao);
+                DeDoc("LỆNH #" + l.So, "Hàng đang ở Leader (Leader không rời khu chính) — chờ chuyển sang clone rồi giao ở khu " + khuGiao);
+                BaoSuKien(chuKho, nguoiNhan, "Lenh #" + l.So + ": " + mon + " cho " + nguoiNhan + ". Hang dang o Leader, cho chuyen sang clone (~1 phut). Toi "
+                    + TenMap() + " khu " + khuGiao + " de nhan", true, null, 0);
+                l.DaBaoCho = true;
+                return l;
+            }
             if (thieu == null)
             {
                 bool coMat = TimNguoi(nguoiNhan, khuGiao) != null;
@@ -1905,6 +2170,7 @@ namespace NSOKHODO.Kho
             {
                 Hang.KetThuc(l, TrangThaiLenh.Huy, "khong co hang: " + thieu);
                 GhiCsvLenh(l, "HUY");
+                DeDoc("LỆNH #" + l.So, "Huỷ: kho không có hàng");
                 BaoSuKien(chuKho, null, "Lenh #" + l.So + " huy: " + thieu, false, null, 0);
             }
             else
@@ -1913,6 +2179,35 @@ namespace NSOKHODO.Kho
                     + ". Giao phan dang co: tiep #" + l.So + ", bo: huy #" + l.So, now);
             }
             return l;
+        }
+
+        /// <summary>
+        /// Lenh khu rieng (D79) thieu hang ma Leader dang giu dung loai do: Leader khong roi khu chinh nen phai don sang
+        /// clone truoc -> cho (khong huy / tam dung). Tat don kho thi khong cho duoc (user 17/09 kiem ky: truoc day bao
+        /// "kho khong co hang" trong khi hang nam ngay tren Leader).
+        /// </summary>
+        private bool ChoLeaderDonCho(LenhRut l)
+        {
+            if (!Cfg.BatDonKho || KhuGiao(l) == Cfg.KhuChinh || string.IsNullOrEmpty(_leaderAcc)) return false;
+            var lt = So.Lay(_leaderAcc);
+            if (lt == null || !lt.Online) return false;
+            foreach (var d in l.Dong)
+            {
+                if (d.SoXin >= 0 && d.DaGiao >= d.SoXin) continue;
+                short tpl = d.Tpl;
+                if (lt.Mon.Exists(m => !m.Khoa.Khoa && m.Khoa.Tpl == tpl)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>Loai hang cac lenh dang cho Leader don (don truoc, va don ca khi Chu kho dang trong khu).</summary>
+        private HashSet<short> LoaiCanDonGap()
+        {
+            var r = new HashSet<short>();
+            foreach (var l in Hang.DangMo)
+                if (l.ChoLeaderDon && l.TrangThai != TrangThaiLenh.TamDung)
+                    foreach (var d in l.Dong) r.Add(d.Tpl);
+            return r;
         }
 
         /// <summary>Acc nay co duoc dung de giao cho lenh <paramref name="l"/> khong (R2).</summary>
@@ -1962,6 +2257,7 @@ namespace NSOKHODO.Kho
             l.ChoCoMatDen = now.AddMinutes(30);
             Hang.DanhDauDoi();
             Ghi("-", "Lenh", "Tam dung lenh #" + l.So + ": " + lyDo);
+            DeDoc("LỆNH #" + l.So, "Tạm dừng: " + lyDo + " (chạy tiếp ở tab Hàng chờ hoặc nhắn: tiep #" + l.So + ")");
             BaoSuKien(l.ChuKho, l.NguoiNhan, tin, true, null, 0);
         }
 
@@ -1970,9 +2266,19 @@ namespace NSOKHODO.Kho
             string thieu = Hang.LapKeHoach(l, So, a => DuocGiao(l, a));
             if (thieu == null || (l.ChapNhanThieu && CoConLai(l)))
             {
+                if (l.ChoLeaderDon && thieu == null) Ghi("-", "Lenh", "Lenh #" + l.So + ": hang da sang clone, giao tiep");
+                l.ChoLeaderDon = false;
                 Ghi("-", "Lenh", "Lap lai ke hoach lenh #" + l.So + " (" + viSao + ")" + (thieu != null ? " - van thieu: " + thieu : ""));
                 return;
             }
+            // Phan thieu dang tren Leader (lenh khu rieng): cho Leader don sang clone - khong tam dung.
+            if (ChoLeaderDonCho(l))
+            {
+                if (!l.ChoLeaderDon) Ghi("-", "Lenh", "Lenh #" + l.So + ": phan thieu dang tren Leader - cho don sang clone");
+                l.ChoLeaderDon = true;
+                return;
+            }
+            l.ChoLeaderDon = false;
             if (DongDu(l)) return;
             // Ly do lap lai (vd. "acc X hong: tui + ruong day ...") vao cot Ly do - "thieu hang" tran thi nguoi doc khong
             // biet vi sao kho con ma lenh bao thieu (user 17/09).
@@ -2015,6 +2321,7 @@ namespace NSOKHODO.Kho
             Hang.KetThuc(l, TrangThaiLenh.Xong, da < xin ? "giao duoc " + da + "/" + xin : "");
             lock (_lk) _tk.XuatLenh++;
             GhiCsvLenh(l, "XONG");
+            DeDoc("LỆNH #" + l.So, "Xong: đã giao " + (da < xin ? da + "/" + xin : da.ToString()) + " món cho " + l.NguoiNhan);
             BaoSuKien(l.ChuKho, l.NguoiNhan, "Xong lenh #" + l.So + ": da giao " + (da < xin ? da + "/" + xin : da.ToString())
                 + " mon (" + l.MoTaMon() + ") cho " + l.NguoiNhan, true, null, 0);
         }
@@ -2033,6 +2340,7 @@ namespace NSOKHODO.Kho
             }
             Hang.KetThuc(l, TrangThaiLenh.Huy, lyDo);
             GhiCsvLenh(l, "HUY");
+            DeDoc("LỆNH #" + l.So, "Huỷ: " + lyDo + (l.TongDaGiao > 0 ? " (đã giao " + l.TongDaGiao + " món)" : ""));
             BaoSuKien(l.ChuKho, l.NguoiNhan, "Da huy lenh #" + l.So + " (" + lyDo + ")"
                 + (l.TongDaGiao > 0 ? ", da giao " + l.TongDaGiao + " mon" : ""), true, null, 0);
         }
@@ -2082,7 +2390,9 @@ namespace NSOKHODO.Kho
                     if (v != null && v.CacLenh.Contains(l.So)) continue;
                     l.CloneDangGiao = null;   // viec da mat ma bao cao chua toi - khong de lenh ket
                 }
-                if (Hang.DaGiaoDu(l) || DongDu(l)) { XongLenh(l); continue; }
+                // Da giao du phan DA LAP ma lenh con cho hang tren Leader (D79) -> chua xong: lap lai ben duoi (review 17/09:
+                // truoc day dong "XONG 5/10" ngay khi clone giao xong phan co san).
+                if (DongDu(l) || (Hang.DaGiaoDu(l) && !l.ChoLeaderDon)) { XongLenh(l); continue; }
 
                 bool lap = !CoConLai(l);
                 foreach (var p in ChepKeHoach(l))
@@ -2235,6 +2545,13 @@ namespace NSOKHODO.Kho
         {
             var v = ViecCua(acc);
             if (v == null || v.BiHuy || v.MucDich == RUT) return;
+            // Gom do (D81) chi la don dep - lenh rut len truoc.
+            var gg = _gom;
+            if (gg != null && (CungAcc(gg.Clone, acc) || CungAcc(gg.Dich, acc)))
+            {
+                HuyGom("nhuong cho lenh rut", now);
+                return;
+            }
             // Luot go ket ngan (< 1 phut) va chinh no mo duong cho lenh rut - khong huy (chi acc thuoc luot do).
             var dg = _don;
             if (dg != null && dg.MucDich == TRA
@@ -2243,6 +2560,13 @@ namespace NSOKHODO.Kho
                 HuyDon("nhuong cho lenh rut", now);
             else if (v.Loai == LoaiViec.CatRuong || v.Loai == LoaiViec.DocRuong)
                 v.Huy("nhuong cho lenh rut");
+            else if (v.Loai == LoaiViec.DoiNhan && v.TuNguoi != null)
+            {
+                // Clone dang cho Chu kho xa do (D82): lenh rut len truoc; cua xa tu bu clone khac (review 17/09).
+                var c = LayClient(acc);
+                if (c == null || c.DangGiaoDich) return;
+                v.Huy("nhuong cho lenh rut");
+            }
             else return;
             GhiHanChe("nhuong|" + acc, 30, acc, "Lenh", "Huy viec " + ChuVan.BoDau(v.MoTa) + " de uu tien lenh rut");
         }
@@ -2372,7 +2696,10 @@ namespace NSOKHODO.Kho
             if (L.DangGiaoDich || CoViec(_leaderAcc) || !LeaderRanh(now)) return;
             // Go ket truoc ca luat "Chu kho dang trong khu": lenh rut cua chinh Chu kho do co the dang cho clone ket.
             if (TaoTraBot(L, now)) return;
-            if (CoChuKhoTrongKhu(L)) return;
+            // Chu kho trong khu: giu Leader ranh cho ho nap - NHUNG tui Leader da duoi nguong nhan thi giu cung vo ich
+            // (moi loi moi deu bi tu choi) -> don ngay (user 17/09: "phai doi Leader don kho, nhieu luc con khong don").
+            // Lenh khu rieng dang cho hang tren Leader (D79) -> cung don ngay.
+            if (CoChuKhoTrongKhu(L) && DemTuiTrong(L) >= Math.Max(1, Cfg.NguongNhan) && LoaiCanDonGap().Count == 0) return;
             DateTime nghi;
             bool leaderNghi = _nghiBaoTri.TryGetValue(_leaderAcc, out nghi) && now < nghi;
             var t = So.Lay(_leaderAcc);
@@ -2407,8 +2734,9 @@ namespace NSOKHODO.Kho
             bool tuRuong = t.Mon.Exists(m => m.TrongRuong && !m.Khoa.Khoa && !giu.Contains(m.Khoa));
             bool tuTui = !tuRuong && tuiCat > 0 && (!Cfg.BatCatRuong || !ruongCho);
             if (!tuRuong && !tuTui) return;
+            var gap = LoaiCanDonGap();
             var nguon = t.Mon.Where(m => !m.Khoa.Khoa && !giu.Contains(m.Khoa))
-                             .OrderBy(m => m.TrongRuong).ThenBy(m => m.Slot).ToList();
+                             .OrderByDescending(m => gap.Contains(m.Khoa.Tpl)).ThenBy(m => m.TrongRuong).ThenBy(m => m.Slot).ToList();
             var nha = NhaCuaChong(nguon.Select(m => m.Khoa.Tpl));
 
             // Chon nick nhan (user 16/09: "do gop duoc thi bo vao cung nick"):
@@ -2575,6 +2903,7 @@ namespace NSOKHODO.Kho
             Ghi(chon.Acc, "GoKet", "Clone " + chon.Acc + " ket cung (tui " + chon.TuiDung + "/" + chon.SoOTui + ", ruong "
                 + chon.RuongDung + "/" + chon.SoORuong + ") -> tra " + Math.Min(n, dua.Count) + " o cho Leader"
                 + (chonCoLenh ? " (dang giu hang cho lenh rut)" : ""));
+            DeDoc("GỠ KẸT", TenNhanVat(chon.Acc) + " đầy cả túi lẫn rương → trả bớt " + Math.Min(n, dua.Count) + " ô cho Leader");
             return true;
         }
 
@@ -2679,7 +3008,8 @@ namespace NSOKHODO.Kho
             var nha = NhaCuaChong(leader.Mon.Select(x => x.Khoa.Tpl));
             var gop = new Dictionary<KhoaMon, int>();
             int dem = 0, tuRuong = 0;
-            foreach (var m in leader.Mon.OrderBy(x => x.TrongRuong).ThenBy(x => x.Slot))
+            var gap = LoaiCanDonGap();
+            foreach (var m in leader.Mon.OrderByDescending(x => gap.Contains(x.Khoa.Tpl)).ThenBy(x => x.TrongRuong).ThenBy(x => x.Slot))
             {
                 if (dem >= n) break;
                 if (m.Khoa.Khoa || giu.Contains(m.Khoa)) continue;
@@ -2823,6 +3153,557 @@ namespace NSOKHODO.Kho
             _don = d;
             Ghi(chon.Acc, "DonXu", "Goi " + chon.Acc + " nhan " + ChuVan.SoDep(xu) + " xu tu Leader");
             return true;
+        }
+
+        // =====================================================================
+        // GOM DO XEP CHONG (D81)
+        // =====================================================================
+
+        /// <summary>
+        /// Mot loai xep chong nam o NHIEU clone thi ton o, rut ra phai di nhieu nick. Gom ve mot nick dich:
+        /// <para>Dich chon de <b>giai phong nhieu o nhat</b>, roi <b>it luot giao dich nhat</b>. Moi luot mot clone giao toi
+        /// da min(12, o trong cua dich - O_CHUA_TUI) chong: server doi nguoi nhan con du o cho TUNG chong, ke ca chong se
+        /// tu gop (user 17/09: "B chi con 1 o thi A chi giao duoc tung mon") -> nick gan day tui khong lam dich; ca nhom
+        /// giu hang deu chat thi nick trong lam trung gian (goi y cua user). Nhan nhieu chong cung loai thi server gop
+        /// thanh MOT (test song 16/09).</para>
+        /// <para>Chay o khu cua clone (khong dung toi Leader / khu chinh), chi khi kho ranh: khong lenh rut, khong cua xa,
+        /// khong clone cho nha. Dot gom GHIM dich toi khi xong - khong doi dich giua chung (khong chuyen qua chuyen lai).
+        /// Lenh rut can nick dang gom -> huy luot gom (NhuongViec).</para>
+        /// </summary>
+        private void XuLyGom(DateTime now)
+        {
+            var g = _gom;
+            if (g != null)
+            {
+                if ((now - g.TaoLuc).TotalMinutes > 6) HuyGom("luot gom qua 6 phut", now);
+                return;
+            }
+            if (!Cfg.BatGomChong || !Cfg.BatCatRuong || Cfg.KhuChinh < 0) return;
+            if (now < _gomNghiDen || (now - _gomXetLuc).TotalSeconds < 15) return;
+            _gomXetLuc = now;
+            if (Hang.SoCho > 0 || _xa != null || _choNha.Count > 0) return;
+            foreach (var k in _gomTranh.Where(kv => now > kv.Value).Select(kv => kv.Key).ToList()) _gomTranh.Remove(k);
+
+            var ds = CloneGom();
+            if (_gomDich != null)
+            {
+                string het = DotGomConDung(ds, now);
+                if (het != null)
+                {
+                    KetThucDotGom(het.Length == 0 ? null : het);
+                    return;   // nghi 2 phut (KetThucDotGom) truoc khi lap dot moi
+                }
+            }
+            if (_gomDich == null && !LapDotGom(ds, now)) return;
+            TaoLuotGom(ds, now);
+        }
+
+        /// <summary>Clone xet duoc cho gom: online o map kho, ruong da doc trong phien nay, khong tranh.</summary>
+        private List<TuiAcc> CloneGom()
+        {
+            var r = new List<TuiAcc>();
+            foreach (var t in So.TatCa())
+            {
+                if (!LaCloneKho(t.Acc) || !t.Online || t.SoORuong < 0) continue;
+                var c = LayClient(t.Acc);
+                if (c == null || c.State != ClientState.InGame || CanDocRuong(t.Acc, c)) continue;
+                var m = c.GameState.CurrentMap;
+                if (c.GameState.IsChangingMap || m == null || m.MapId != Cfg.Map) continue;
+                DateTime den;
+                if (_gomTranh.TryGetValue(t.Acc, out den) && DateTime.Now < den) continue;
+                r.Add(t);
+            }
+            return r;
+        }
+
+        /// <summary>
+        /// So CHONG (o) moi loai xep chong nick nay GIAO DUOC (tui + ruong), bo mon khoa + loai sai ke (Rac / khong Rac).
+        /// Tui khong con o nao: chi chong trong tui (chong trong ruong khong lay ra duoc - go ket D78 lo) - khong thi dot
+        /// gom lap lai mai cho mot nick khong giao duoc.
+        /// </summary>
+        private Dictionary<short, int> ChongCua(TuiAcc t)
+        {
+            var r = new Dictionary<short, int>();
+            bool keRac = KeHang.KeCuaAcc(t.Acc, Cfg) == KeHang.RAC;
+            bool chiTui = t.TuiTrong < 1;
+            foreach (var m in t.Mon)
+            {
+                if (m.Khoa.Khoa || !LaChong(m.Khoa.Tpl) || (chiTui && m.TrongRuong)) continue;
+                if (keRac != (NhomCua(m.Khoa.Tpl) == KeHang.RAC)) continue;
+                int n;
+                r.TryGetValue(m.Khoa.Tpl, out n);
+                r[m.Khoa.Tpl] = n + 1;
+            }
+            return r;
+        }
+
+        /// <summary>Nick lam dich gom cho nhom ke nay duoc khong (luat nhu ChonCloneNhan): Rac chi vao ke Rac; co clone gan
+        /// dung ke thi chi cac clone do; con lai tranh ke Rac.</summary>
+        private bool LamDichDuoc(string acc, string nhom, List<TuiAcc> ds)
+        {
+            string ke = KeHang.KeCuaAcc(acc, Cfg);
+            if (nhom == KeHang.RAC) return ke == KeHang.RAC;
+            if (ke == KeHang.RAC) return false;
+            return ke == nhom || !ds.Exists(t => KeHang.KeCuaAcc(t.Acc, Cfg) == nhom);
+        }
+
+        /// <summary>Tim loai dang rai + chon dich cho mot dot. true = da ghim dot moi.</summary>
+        private bool LapDotGom(List<TuiAcc> ds, DateTime now)
+        {
+            var chong = new Dictionary<string, Dictionary<short, int>>(StringComparer.OrdinalIgnoreCase);
+            foreach (var t in ds) chong[t.Acc] = ChongCua(t);
+            var giu = new Dictionary<short, int>();       // loai -> so nick giu
+            var tong = new Dictionary<short, long>();     // loai -> tong so luong
+            foreach (var t in ds)
+            {
+                foreach (var tpl in chong[t.Acc].Keys)
+                {
+                    int n;
+                    giu.TryGetValue(tpl, out n);
+                    giu[tpl] = n + 1;
+                }
+                foreach (var m in t.Mon)
+                {
+                    if (m.Khoa.Khoa || !chong[t.Acc].ContainsKey(m.Khoa.Tpl)) continue;
+                    long s;
+                    tong.TryGetValue(m.Khoa.Tpl, out s);
+                    tong[m.Khoa.Tpl] = s + m.SoLuong;
+                }
+            }
+            // Tran mot chong ~30.000 (so luong la short): loai qua lon gom ve mot nick van phai nhieu chong -> bo.
+            var rai = giu.Where(kv => kv.Value >= 2 && tong[kv.Key] < 30000).Select(kv => kv.Key).ToList();
+            if (rai.Count == 0) return false;
+
+            foreach (var nhom in rai.GroupBy(NhomCua).OrderByDescending(x => x.Count()))
+            {
+                string best = null;
+                List<short> bestLoai = null;
+                int bestLoi = 0, bestLuot = int.MaxValue, bestCong = int.MaxValue, bestCho = -1;
+                long bestCo = -1;
+                foreach (var x in ds)
+                {
+                    if (!LamDichDuoc(x.Acc, nhom.Key, ds)) continue;
+                    int moiLuot = Math.Min(Controller.TradeHandler.MAX_MON, x.TuiTrong - O_CHUA_TUI);
+                    if (moiLuot < 1) continue;
+                    var cx = chong[x.Acc];
+                    // Loai dich chua giu -> ton mot o ruong moi (khong vuot ruong trong). Loai nhieu chong o nick khac truoc.
+                    Func<short, int> oNgoai = tp => ds.Where(a => !CungAcc(a.Acc, x.Acc)).Sum(a =>
+                    {
+                        int n;
+                        return chong[a.Acc].TryGetValue(tp, out n) ? n : 0;
+                    });
+                    var chon = new List<short>();
+                    int oMoi = 0;
+                    foreach (var tp in nhom.OrderByDescending(oNgoai))
+                    {
+                        if (!cx.ContainsKey(tp))
+                        {
+                            if (oMoi >= x.RuongTrong) continue;
+                            oMoi++;
+                        }
+                        chon.Add(tp);
+                    }
+                    int chuyen = 0, luot = 0;
+                    foreach (var a in ds)
+                    {
+                        if (CungAcc(a.Acc, x.Acc)) continue;
+                        int s = 0;
+                        foreach (var tp in chon)
+                        {
+                            int n;
+                            if (chong[a.Acc].TryGetValue(tp, out n)) s += n;
+                        }
+                        if (s == 0) continue;
+                        chuyen += s;
+                        // Nick giao cung chi mang duoc chung ay chong moi luot: o trong + chong da nam san trong tui
+                        // (review 17/09: nick giao tui chat lay ruong ra tung it mot).
+                        int trongTui = a.Mon.Count(m => !m.TrongRuong && !m.Khoa.Khoa && chon.Contains(m.Khoa.Tpl));
+                        int mang = Math.Max(1, Math.Min(moiLuot, a.TuiTrong - O_CHUA_TUI + trongTui));
+                        luot += (s + mang - 1) / mang;
+                    }
+                    int loi = chuyen - oMoi;
+                    if (loi < 1) continue;
+                    // Cong viec = so luot giao dich + so lan dich phai cat ruong cho trong tui (moi lan nhan day moiLuot o):
+                    // dich chi nhan 1 chong / luot thi luot nao cung phai chay ra Thu kho.
+                    int cong = luot + (chuyen + moiLuot - 1) / moiLuot;
+                    long coSan = x.Mon.Where(m => !m.Khoa.Khoa && chon.Contains(m.Khoa.Tpl)).Sum(m => (long)m.SoLuong);
+                    int cho = x.TuiTrong + x.RuongTrong;
+                    bool hon = best == null || loi > bestLoi
+                               || (loi == bestLoi && (cong < bestCong
+                                   || (cong == bestCong && (coSan > bestCo || (coSan == bestCo && cho > bestCho)))));
+                    if (!hon) continue;
+                    best = x.Acc; bestLoai = chon; bestLoi = loi; bestLuot = luot; bestCong = cong; bestCo = coSan; bestCho = cho;
+                }
+                if (best == null) continue;
+                _gomDich = best;
+                _gomLoai = new HashSet<short>(bestLoai);
+                _gomDotLuc = now;
+                _gomDotLuot = 0;
+                _gomDotMon = 0;
+                Ghi(best, "Gom", "Dot gom moi: " + bestLoai.Count + " loai xep chong ve " + best + " (du kien " + bestLuot
+                    + " luot, bot ~" + bestLoi + " o): " + string.Join(", ", bestLoai.Select(tp => tp.ToString()).ToArray()));
+                DeDoc("GOM", "Gom " + bestLoai.Count + " loại đồ xếp chồng đang rải ở nhiều nick về " + TenNhanVat(best)
+                    + " (khoảng " + bestLuot + " lượt, trống thêm ~" + bestLoi + " ô)");
+                return true;
+            }
+            GhiHanChe("gomkhong", 1800, "-", "Gom", "Co " + rai.Count + " loai xep chong rai nhieu nick nhung chua nick nao lam dich duoc (tui / ruong het cho)");
+            _gomNghiDen = now.AddMinutes(5);
+            return false;
+        }
+
+        /// <summary>null = dot dang ghim lam tiep; "" = xong (khong con nick nao khac giu loai cua dot); khac = ly do dung.</summary>
+        private string DotGomConDung(List<TuiAcc> ds, DateTime now)
+        {
+            if ((now - _gomDotLuc).TotalMinutes > 60) return "quá 60 phút";
+            if (!LaCloneKho(_gomDich) || !DangOnline(_gomDich)) return TenNhanVat(_gomDich) + " không còn làm kho / offline";
+            // Chi dem nick XET DUOC (cung danh sach TaoLuotGom dung): dem ca nick dang tranh / chua doc ruong / sai map thi
+            // dot bi ghim toi 60 phut roi lap lai dung dot do (review 17/09). Nick dang ban viec khac van tinh (se ranh).
+            foreach (var t in ds)
+            {
+                if (CungAcc(t.Acc, _gomDich)) continue;
+                if (ChongCua(t).Keys.Any(_gomLoai.Contains)) return null;
+            }
+            return "";
+        }
+
+        private void KetThucDotGom(string loi)
+        {
+            if (_gomDich == null) return;
+            string ten = TenNhanVat(_gomDich);
+            if (loi == null)
+            {
+                Ghi(_gomDich, "Gom", "Xong dot gom ve " + _gomDich + ": " + _gomDotLuot + " luot, " + _gomDotMon + " mon");
+                if (_gomDotLuot > 0) DeDoc("GOM", "Xong: đã gom " + _gomDotMon + " món (" + _gomDotLuot + " lượt) về " + ten);
+            }
+            else
+            {
+                Ghi(_gomDich, "Gom", "Dung dot gom ve " + _gomDich + ": " + ChuVan.BoDau(loi));
+                DeDoc("GOM", "Dừng gom về " + ten + ": " + loi);
+            }
+            _gomDich = null;
+            _gomLoai = new HashSet<short>();
+            _gomNghiDen = DateTime.Now.AddMinutes(2);
+        }
+
+        /// <summary>Mot luot: nick giao giu nhieu chong nhat (dang ranh) giao cho dich o khu cua dich.</summary>
+        private void TaoLuotGom(List<TuiAcc> ds, DateTime now)
+        {
+            var x = ds.Find(t => CungAcc(t.Acc, _gomDich));
+            if (x == null) return;   // dich dang doc ruong / tam tranh - cho
+            var cx = LayClient(x.Acc);
+            if (cx == null || cx.DangGiaoDich || CoViec(x.Acc) || VuaVaoGame(x.Acc)) return;   // dich dang cat ruong... - cho
+            int moiLuot = Math.Min(Controller.TradeHandler.MAX_MON, Math.Min(x.TuiTrong, DemTuiTrong(cx)) - O_CHUA_TUI);
+            if (moiLuot < 1)
+            {
+                if (!Cfg.BatCatRuong || !RuongConCho(x, KHONG_GIU)) KetThucDotGom("túi và rương " + TenNhanVat(x.Acc) + " hết chỗ");
+                else _canCat.Add(x.Acc);
+                return;
+            }
+            int khu = KhuDungCho(cx);
+            if (khu < 0) return;
+
+            TuiAcc chon = null;
+            List<OMon> monChon = null;
+            foreach (var t in ds)
+            {
+                if (CungAcc(t.Acc, x.Acc)) continue;
+                var c = LayClient(t.Acc);
+                if (c == null || c.DangGiaoDich || CoViec(t.Acc) || VuaVaoGame(t.Acc)) continue;
+                // Tui khong con o nao: chi giao chong dang o tui (ruong khong lay ra duoc - xem ChongCua).
+                var mon = t.Mon.Where(m => !m.Khoa.Khoa && _gomLoai.Contains(m.Khoa.Tpl) && (t.TuiTrong >= 1 || !m.TrongRuong))
+                               .OrderBy(m => m.TrongRuong).ThenBy(m => m.Slot).ToList();
+                if (mon.Count == 0) continue;
+                if (chon == null || mon.Count > monChon.Count) { chon = t; monChon = mon; }
+            }
+            if (chon == null) return;
+
+            var gop = new Dictionary<KhoaMon, int>();
+            int dem = 0;
+            foreach (var m in monChon)
+            {
+                if (dem >= moiLuot) break;
+                int s;
+                gop.TryGetValue(m.Khoa, out s);
+                gop[m.Khoa] = s + m.SoLuong;
+                dem++;
+            }
+            var d = new PhienDon { MucDich = GOM, Clone = chon.Acc, CloneTen = TenNhanVat(chon.Acc), Dich = x.Acc };
+            foreach (var kv in gop) d.Dong.Add(new DongGiao { Khoa = kv.Key, SoLuong = kv.Value });
+            d.ViecNhan = new Viec { Loai = LoaiViec.DoiNhan, Acc = x.Acc, TuBotAcc = chon.Acc, Khu = khu, MucDich = GOM, HetHan = now.AddMinutes(4) };
+            if (!GiaoViec(d.ViecNhan)) return;
+            d.ViecClone = new Viec
+            {
+                Loai = LoaiViec.GiaoMon, Acc = chon.Acc, NguoiNhan = TenNhanVat(x.Acc), NguoiNhanLaBot = true,
+                MucDich = GOM, Khu = khu, HetHan = now.AddMinutes(4),
+            };
+            foreach (var gd in d.Dong) d.ViecClone.Dong.Add(new DongGiao { Khoa = gd.Khoa, SoLuong = gd.SoLuong });
+            if (!GiaoViec(d.ViecClone))
+            {
+                d.ViecNhan.Huy("khong giao duoc viec gom cho " + chon.Acc);
+                return;
+            }
+            _gom = d;
+            Ghi(chon.Acc, "Gom", "Luot gom: " + chon.Acc + " -> " + x.Acc + " o khu " + khu + " (" + dem + " chong)");
+        }
+
+        /// <summary>Bao cao viec cua mot luot gom: nick giao xong / hong, hoac nick dich thoi doi.</summary>
+        private void SauViecGom(PhienDon g, Viec v, BaoCaoViec bc, DateTime now)
+        {
+            _gom = null;
+            if (g.ViecClone == v)
+            {
+                if (g.ViecNhan != null) g.ViecNhan.Huy(bc.Xong ? "xong luot gom" : "nick giao gom hong");
+                if (bc.Xong)
+                {
+                    _gomDotLuot++;
+                    _gomDotMon += g.Dong.Sum(x => x.SoLuong);
+                    _gomNghiDen = now.AddSeconds(3);   // so kho hai nick cap nhat vai nhip sau
+                    _gomXetLuc = DateTime.MinValue;
+                    return;
+                }
+                _gomNghiDen = now.AddSeconds(30);
+                if (bc.MaLoi == MaLoiViec.BI_HUY) return;   // huy / nhuong / rot mang - thu lai sau
+                Ghi(g.Clone, "Gom", "Luot gom hong (" + bc.MaLoi + " " + bc.LyDo + ")");
+                bool loiDich = bc.MaLoi == MaLoiGiaoDich.THIEU_O || bc.MaLoi == MaLoiGiaoDich.TU_CHOI_HANG
+                               || bc.MaLoi == MaLoiGiaoDich.HET_GIO_CHO_NHAN_LOI || bc.MaLoi == MaLoiViec.KHONG_THAY_NGUOI
+                               || bc.MaLoi == MaLoiViec.KHONG_VAO_KHU;
+                if (loiDich)
+                {
+                    _gomTranh[g.Dich] = now.AddMinutes(15);
+                    KetThucDotGom(TenNhanVat(g.Dich) + " nhận không được: " + LyDoDeDoc(bc.MaLoi, bc.LyDo));
+                }
+                else
+                {
+                    _gomTranh[g.Clone] = now.AddMinutes(30);
+                    DeDoc("GOM", TenNhanVat(g.Clone) + " → " + TenNhanVat(g.Dich) + " không thành: "
+                        + LyDoDeDoc(bc.MaLoi, bc.LyDo) + " (bỏ qua " + TenNhanVat(g.Clone) + " 30 phút)");
+                }
+                return;
+            }
+            // Nick dich roi viec doi nhan truoc (rot mang / het han / nha) -> bo luot.
+            if (g.ViecClone != null)
+            {
+                g.ViecClone.Huy("nick dich thoi doi");
+                HuyPhienCua(g.ViecClone.Acc, g.ViecClone, "nick dich thoi doi");
+            }
+            _gomNghiDen = now.AddSeconds(30);
+        }
+
+        private void HuyGom(string lyDo, DateTime now)
+        {
+            var g = _gom;
+            if (g == null) return;
+            _gom = null;
+            if (g.ViecClone != null)
+            {
+                g.ViecClone.Huy(lyDo);
+                HuyPhienCua(g.ViecClone.Acc, g.ViecClone, lyDo);
+            }
+            if (g.ViecNhan != null) g.ViecNhan.Huy(lyDo);
+            _gomNghiDen = now.AddMinutes(2);
+            Ghi(g.Clone, "Gom", "Huy luot gom " + g.Clone + " -> " + g.Dich + " (" + lyDo + ")");
+        }
+
+        // =====================================================================
+        // CUA XA (D82): Chu kho giao thang vao clone
+        // =====================================================================
+
+        /// <summary>
+        /// Mo / gia han cua xa cho Chu kho <paramref name="chu"/>: toi da XA_SO_CLONE clone ranh (tui trong nhieu nhat)
+        /// sang khu chinh dung canh Leader, nhan do CHI cua nguoi nay. <paramref name="tuLenh"/> = Chu kho nhan `xa`;
+        /// false = Leader day tu mo khi Chu kho moi (user 17/09: "muon xa mot loat thi phai doi Leader don kho, nhieu
+        /// luc con khong don").
+        /// </summary>
+        private void MoXa(string chu, DateTime now, bool tuLenh)
+        {
+            if (string.IsNullOrEmpty(chu) || Cfg.KhuChinh < 0) return;
+            if (!Cfg.BatNap) { BaoRieng(chu, "Kho dang tat nhan do", "tatnap", 30); return; }
+            if (_khoDay) { BaoRieng(chu, "Kho day, chua nhan them duoc", "donkho", 30); return; }
+            var x = _xa;
+            if (x != null && !ChuVan.CungTen(x.ChuKho, chu))
+            {
+                BaoRieng(chu, "Dang mo cua xa cho " + x.ChuKho + ", thu lai sau", "xaban", 30);
+                return;
+            }
+            bool moi = x == null;
+            if (moi) x = new PhienXa { ChuKho = chu };
+            x.Den = now.AddMinutes(XA_PHUT);
+            BoSungXa(x);
+            if (x.Clone.Count == 0)
+            {
+                BaoRieng(chu, tuLenh ? "Chua co clone nao ranh de nhan, thu lai sau ~1 phut"
+                                     : "Dang don kho, thu lai sau ~30 giay (hoac nhan: nap)", "xakhong", 30);
+                if (moi) GhiHanChe("xakhong", 60, "-", "Xa", "Khong mo duoc cua xa cho " + chu + ": khong clone nao ranh");
+                return;
+            }
+            _xa = x;
+            bool daToi = x.Clone.TrueForAll(a => OKhuChinh(LayClient(a)));
+            if (daToi) x.DaBaoSanSang = true;
+            // "ten(o trong)" khong co dau cach: tin dai bi chia doi thi khong dut giua "(27 o)" (test song 17/09).
+            string tin = (tuLenh ? "Cua xa mo " + XA_PHUT + " phut" : "Leader day")
+                         + (daToi ? ", moi GD thang (o trong): " : ", clone dang toi ~10s, moi GD (o trong): ") + DanhSachXa(x);
+            if (tuLenh) BaoRieng(chu, tin, null, 0);
+            else BaoRieng(chu, tin, "xamo|" + chu, 20);
+            BaoRieng(chu, "Giao xong nhan: xa xong", "xagoiy|" + chu, 600);
+            if (moi)
+            {
+                Ghi("-", "Xa", "Mo cua xa cho " + chu + (tuLenh ? " (lenh xa)" : " (Leader day)") + ": " + string.Join(", ", x.Clone.ToArray()));
+                DeDoc("XẢ", "Mở cửa xả cho " + chu + (tuLenh ? "" : " (Leader đầy)") + " — giao thẳng vào " + DanhSachXaDeDoc(x));
+            }
+            CapNhatMoTaXa(x, now);
+        }
+
+        private string DanhSachXa(PhienXa x)
+        {
+            return string.Join(", ", x.Clone.Select(a => TenNhanVat(a) + "(" + Math.Max(0, DemTuiTrong(LayClient(a)) - O_CHUA_TUI) + ")").ToArray());
+        }
+
+        private string DanhSachXaDeDoc(PhienXa x)
+        {
+            return string.Join(", ", x.Clone.Select(a => TenNhanVat(a) + " (" + Math.Max(0, DemTuiTrong(LayClient(a)) - O_CHUA_TUI) + " ô)").ToArray());
+        }
+
+        /// <summary>Bo clone da roi cua (viec het / huy); them clone ranh cho du XA_SO_CLONE. Tra ve so clone moi them.</summary>
+        private int BoSungXa(PhienXa x)
+        {
+            x.Clone.RemoveAll(a =>
+            {
+                var v = ViecCua(a);
+                return v == null || v.BiHuy || v.TuNguoi == null;
+            });
+            if (x.Clone.Count >= XA_SO_CLONE) return 0;
+            var dangDung = new HashSet<int>();
+            foreach (var a in x.Clone)
+            {
+                var v = ViecCua(a);
+                if (v != null) dangDung.Add(v.DungX);
+            }
+            var ung = new List<TuiAcc>();
+            foreach (var acc in _accTheoTen.Keys)
+            {
+                if (!LaCloneKho(acc) || x.Clone.Exists(a => CungAcc(a, acc))) continue;
+                if (KeHang.KeCuaAcc(acc, Cfg) == KeHang.RAC) continue;
+                // Dang giu hang cho lenh rut -> de danh cho lenh (review 17/09: cua xa keo mat clone, lenh qua han bi huy).
+                if (Hang.KhoaDangGiuTren(acc).Count > 0) continue;
+                DateTime den;
+                if (_xaTranh.TryGetValue(acc, out den) && DateTime.Now < den) continue;
+                var c = LayClient(acc);
+                if (c == null || c.State != ClientState.InGame || c.DangGiaoDich || CoViec(acc) || VuaVaoGame(acc)) continue;
+                var m = c.GameState.CurrentMap;
+                if (c.GameState.IsChangingMap || m == null || m.MapId != Cfg.Map) continue;
+                var t = So.Lay(acc);
+                if (t == null || !t.Online) continue;
+                if (Math.Min(t.TuiTrong, DemTuiTrong(c)) - O_CHUA_TUI < XA_TUI_TOI_THIEU) continue;
+                ung.Add(t);
+            }
+            int them = 0;
+            // Tui trong nhieu nhat truoc (nhan duoc nhieu luot), roi ruong trong (cat vao duoc nhieu).
+            foreach (var t in ung.OrderByDescending(a => a.TuiTrong).ThenByDescending(a => a.RuongTrong))
+            {
+                if (x.Clone.Count >= XA_SO_CLONE) break;
+                var v = new Viec { Loai = LoaiViec.DoiNhan, Acc = t.Acc, TuNguoi = x.ChuKho, HetHan = x.Den.AddMinutes(1) };
+                if (Cfg.LeaderX != 0 || Cfg.LeaderY != 0)
+                {
+                    // Dung thanh hang canh cho Leader: phai / trai / phai xa (khong trung cho clone dang dung).
+                    foreach (int lech in new[] { 55, -55, 110, -110 })
+                    {
+                        int dx = Cfg.LeaderX + lech;
+                        if (dx <= 24 || dangDung.Contains(dx)) continue;
+                        v.DungX = (short)dx;
+                        v.DungY = Cfg.LeaderY;
+                        break;
+                    }
+                }
+                if (!GiaoViec(v)) continue;
+                dangDung.Add(v.DungX);
+                x.Clone.Add(t.Acc);
+                them++;
+            }
+            return them;
+        }
+
+        private void XuLyXa(DateTime now)
+        {
+            var x = _xa;
+            if (x == null) { _moTaXa = ""; return; }
+            bool thay = TimNguoi(x.ChuKho, Cfg.KhuChinh) != null;
+            if (thay) x.VangTu = DateTime.MinValue;
+            else if (x.VangTu == DateTime.MinValue) x.VangTu = now;
+            if (!Cfg.BatNap) { DongXa("tắt nhận đồ", now); return; }
+            if (_khoDay) { DongXa("kho đầy", now); return; }
+            if (now > x.Den) { DongXa(XA_PHUT + " phút không xả thêm", now); return; }
+            if (!thay && (now - x.VangTu).TotalMinutes >= 3) { DongXa(x.ChuKho + " rời khu chính", now); return; }
+
+            // Clone gan het cho -> roi cua di cat ruong, clone khac vao thay.
+            int roi = 0;
+            foreach (var a in x.Clone)
+            {
+                var v = ViecCua(a);
+                if (v == null || v.BiHuy || v.TuNguoi == null) continue;
+                v.HetHan = x.Den.AddMinutes(1);
+                var c = LayClient(a);
+                if (c == null || c.DangGiaoDich) continue;
+                if (DemTuiTrong(c) - O_CHUA_TUI < XA_TUI_TOI_THIEU)
+                {
+                    v.Huy("tui gan day - di cat ruong");
+                    roi++;
+                }
+                else if (!OKhuChinh(c) && (now - v.TaoLuc).TotalMilliseconds > XA_TOI_KHU_MS)
+                {
+                    // Khu chinh day / doi khu hong: dung mai o khu phu ma Chu kho van duoc bao "moi GD" (review 17/09).
+                    v.Huy("khong vao duoc khu chinh");
+                    _xaTranh[a] = now.AddMinutes(10);
+                    roi++;
+                }
+            }
+            int truoc = x.Clone.Count;
+            int them = BoSungXa(x);
+            if (roi > 0 || them > 0 || x.Clone.Count != truoc)
+            {
+                if (x.Clone.Count > 0) BaoRieng(x.ChuKho, "Cua xa doi: moi GD " + DanhSachXa(x), "xadoi|" + x.ChuKho, 10);
+                else BaoRieng(x.ChuKho, "Clone dang cat do vao ruong, doi chut roi giao tiep", "xacho|" + x.ChuKho, 30);
+            }
+            // Bao "san sang" MOT lan khi moi clone cua cua da dung o khu chinh (luc mo, clone con dang doi khu ~10 giay).
+            if (!x.DaBaoSanSang && x.Clone.Count > 0 && x.Clone.TrueForAll(a => OKhuChinh(LayClient(a))))
+            {
+                x.DaBaoSanSang = true;
+                BaoRieng(x.ChuKho, "Clone da toi, moi GD: " + DanhSachXa(x), "xasan|" + x.ChuKho, 10);
+            }
+            CapNhatMoTaXa(x, now);
+        }
+
+        private void CapNhatMoTaXa(PhienXa x, DateTime now)
+        {
+            _moTaXa = string.Format("Cửa xả: {0} → {1} · còn {2} phút · đã nhận {3} món",
+                x.ChuKho, x.Clone.Count == 0 ? "(clone đang cất đồ)" : string.Join(", ", x.Clone.Select(TenNhanVat).ToArray()),
+                Math.Max(0, (int)Math.Round((x.Den - now).TotalMinutes)), x.Mon);
+        }
+
+        private void SauNhanXa(string tu, int soMon, DateTime now)
+        {
+            var x = _xa;
+            if (x == null || !ChuVan.CungTen(x.ChuKho, tu)) return;
+            x.Luot++;
+            x.Mon += soMon;
+            x.Den = now.AddMinutes(XA_PHUT);
+        }
+
+        private void DongXa(string lyDo, DateTime now)
+        {
+            var x = _xa;
+            if (x == null) return;
+            _xa = null;
+            _moTaXa = "";
+            foreach (var a in x.Clone)
+            {
+                var v = ViecCua(a);
+                if (v != null && v.TuNguoi != null && !v.BiHuy) v.Huy("dong cua xa");
+            }
+            Ghi("-", "Xa", "Dong cua xa cho " + x.ChuKho + " (" + ChuVan.BoDau(lyDo) + "): " + x.Luot + " luot, " + x.Mon + " mon");
+            DeDoc("XẢ", "Đóng cửa xả của " + x.ChuKho + " (" + lyDo + "): "
+                + (x.Luot > 0 ? "đã nhận " + x.Mon + " món qua " + x.Luot + " lượt" : "chưa nhận món nào"));
+            BaoRieng(x.ChuKho, x.Luot > 0 ? "Dong cua xa (" + ChuVan.BoDau(lyDo) + "): da nhan " + x.Mon + " mon / " + x.Luot + " luot"
+                                          : "Da dong cua xa (" + ChuVan.BoDau(lyDo) + ")", null, 0);
         }
 
         // =====================================================================

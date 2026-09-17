@@ -54,6 +54,11 @@ namespace NSOKHODO.Kho
         public int Khu = -1;
         /// <summary>Khu giao khong co bot nao nhin thay: lan cu clone sang tim tiep theo (khong luu dia).</summary>
         public DateTime ThuTimSau;
+        /// <summary>
+        /// Lenh khu rieng thieu hang ma phan thieu dang nam tren Leader (Leader khong roi khu chinh - D79): cho Leader
+        /// don sang clone roi lap lai, KHONG huy / tam dung (khong luu dia - nap lai thi tinh lai).
+        /// </summary>
+        public bool ChoLeaderDon;
 
         public bool DangMo { get { return TrangThai == TrangThaiLenh.ChoCoMat || TrangThai == TrangThaiLenh.DangGiao || TrangThai == TrangThaiLenh.TamDung; } }
 
@@ -201,6 +206,8 @@ namespace NSOKHODO.Kho
                     int canGiao = d.SoXin < 0 ? int.MaxValue : Math.Max(0, d.SoXin - d.DaGiao);
                     if (canGiao == 0) continue;
 
+                    // Thu cuoi: cap khong thuoc khoa (D80) -> "+cap" trong lenh bo qua.
+                    int capXin = KhoaMon.LaThuCuoi(d.Tpl) ? -1 : d.Cap;
                     // Cac cap dang co (chi mon khong khoa)
                     var cap = new SortedDictionary<int, int>();
                     foreach (var t in tuiAcc)
@@ -209,20 +216,20 @@ namespace NSOKHODO.Kho
                         foreach (var m in t.Mon)
                         {
                             if (m.Khoa.Khoa || m.Khoa.Tpl != d.Tpl) continue;
-                            if (d.Cap >= 0 && m.Khoa.Up != d.Cap) continue;
+                            if (capXin >= 0 && m.Khoa.Up != capXin) continue;
                             int co;
                             cap.TryGetValue(m.Khoa.Up, out co);
                             cap[m.Khoa.Up] = co + m.SoLuong;
                         }
                     }
-                    if (d.Cap < 0 && cap.Count > 1)
+                    if (capXin < 0 && cap.Count > 1)
                     {
                         var p = new List<string>();
                         foreach (var kv in cap) p.Add("+" + kv.Key + " x" + kv.Value);
                         thieu.Add(BangMon.Ten(d.Tpl) + " co nhieu cap (" + string.Join(", ", p.ToArray()) + ") - ghi ro +cap");
                         continue;
                     }
-                    int up = d.Cap >= 0 ? d.Cap : (cap.Count == 1 ? FirstKey(cap) : 0);
+                    int up = capXin >= 0 ? capXin : (cap.Count == 1 ? FirstKey(cap) : 0);
                     d.CapDaChot = up;
 
                     // Kha dung theo tung acc — uu tien acc co nhieu nhat (it clone nhat). Co han KHONG

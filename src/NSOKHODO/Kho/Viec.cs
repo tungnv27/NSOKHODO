@@ -8,8 +8,8 @@ namespace NSOKHODO.Kho
     {
         DocRuong,   // toi Thu kho, xin danh sach ruong
         CatRuong,   // toi Thu kho, cat do trong tui vao ruong
-        GiaoMon,    // (lay ruong) -> (tach chong) -> sang khu chinh -> toi sat nguoi nhan -> giao dich
-        DoiNhan,    // sang khu chinh, dung sat bot giao, cho no moi
+        GiaoMon,    // (lay ruong) -> (tach chong) -> sang khu giao -> toi sat nguoi nhan -> giao dich
+        DoiNhan,    // sang khu (chinh / Khu), dung cho bot giao (TuBotAcc) hoac Chu kho xa do (TuNguoi) moi
     }
 
     /// <summary>Mot dong cua viec giao: mon (khoa) + so luong can giao.</summary>
@@ -43,12 +43,14 @@ namespace NSOKHODO.Kho
         public int LenhSo;                // 0 = viec noi bo (don kho / don xu)
         // Moi lenh rut duoc GOP vao viec nay (cung nguoi nhan, giu cho tren cung acc - SPEC §7).
         public readonly List<int> CacLenh = new List<int>();
-        public string MucDich = "";       // "rut" / "don" / "donxu" / "tra"
+        public string MucDich = "";       // "rut" / "don" / "donxu" / "tra" / "gom"
         public int Khu = -1;              // khu giao (D79); -1 = khu chinh
         public int ChoTimMs;              // cho thay nguoi nhan toi da (0 = mac dinh cua mode)
 
         // ---- DoiNhan ----
         public string TuBotAcc;           // username bot se giao
+        public string TuNguoi;            // D82: ten nhan vat Chu kho xa do thang vao clone (null = cho bot)
+        public short DungX, DungY;        // D82: cho dung khi cho xa (0,0 = dung dau cung duoc)
 
         // ---- CatRuong ----
         public HashSet<KhoaMon> KhongCat = new HashSet<KhoaMon>();
@@ -72,12 +74,14 @@ namespace NSOKHODO.Kho
                 {
                     case LoaiViec.DocRuong: return "Đọc rương";
                     case LoaiViec.CatRuong: return "Cất rương";
-                    case LoaiViec.DoiNhan: return "Chờ nhận từ " + TuBotAcc;
+                    case LoaiViec.DoiNhan:
+                        return TuNguoi != null ? "Nhận đồ xả của " + TuNguoi : "Chờ nhận từ " + TuBotAcc;
                     default:
                         string ai = NguoiNhan ?? "?";
                         if (MucDich == "donxu") return "Dồn xu → " + ai;
                         if (MucDich == "don") return "Dọn kho → " + ai;
                         if (MucDich == "tra") return "Trả bớt → " + ai;
+                        if (MucDich == "gom") return "Gom đồ → " + ai + (Khu >= 0 ? " (khu " + Khu + ")" : "");
                         return "Giao lệnh #" + LenhSo + " → " + ai + (Khu >= 0 ? " (khu " + Khu + ")" : "");
                 }
             }

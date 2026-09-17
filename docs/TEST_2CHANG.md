@@ -51,6 +51,20 @@ với tổng đã nạp (kể cả 11 món bạn nạp bằng `barbigz999` / `ba
 | Chat `lay 456 1 khu 7`; sai cú pháp trả lời gọn một tin | ✅ |
 | Nạp trả hết, tổng từng loại khớp; nhịp chống AFK bản cuối vẫn về 216 | ✅ |
 
+### Gom đồ, cửa xả, log dễ đọc (MINH chạy 17/09 10:00–10:30, bản cuối 10:19 / 10:29, `tungnv2` không đụng tới)
+
+| Mục | Kết quả |
+|---|---|
+| **Gom** (D81) trên dữ liệu thật: 10 loại xếp chồng nằm trên cả tungkhodo1 lẫn tungkhodo4 | ✅ 1 giao dịch (5 s) tungkhodo4 → tungkhodo1, 268 món; cất rương gộp vào chồng sẵn có; tungkhodo4 trống thêm 10 ô |
+| **Cửa xả tự mở** khi Leader dưới ngưỡng mà Chủ kho mời (D82) | ✅ 3 clone sang khu chính, đứng thành hàng x = 310 / 420 / 475; tin nhắn liệt kê clone |
+| Xả 2 lượt × 12 vào một clone → clone rời cửa đi cất rương, clone khác vào thay | ✅ tungkhodo5 → tungkhodo2; tin "Cua xa doi" |
+| `xa xong`, `xa` | ✅ đóng / mở đúng, báo số món |
+| Leader dọn khi Chủ kho **vẫn đứng cạnh** (túi Leader dưới ngưỡng) | ✅ 8 s sau lượt nạp thứ hai Leader tự cất rương (bản cũ đứng im) |
+| **Lệnh khu 7** 20 viên: 10 trên clone, 12 trên Leader (D84) | ✅ clone giao 8 + 2, Leader dọn 12 sang tungkhodo3 (ưu tiên), tungkhodo3 giao 10 → **20/20 trong 29 s** |
+| **Gỡ kẹt** bản cuối: tungkhodo8 túi 30/30 + rương 30/30, rút 2 món chỉ có trong rương nó | ✅ tự trả 12 ô cho Leader ngay khi đọc rương; lệnh chờ gỡ kẹt → giao đủ trong 11 s |
+| Log dễ đọc (harness in dòng `[SK]`) + ảnh khung log hai chế độ, ô *Gom đồ* | ✅ `[GIAO] tungkhodo8 → tungkhodo9: 8 Đá cấp 7 (lệnh #42)`… |
+| Nạp trả hết đồ test (tungkhodo9 rỗng túi) | ✅ |
+
 ## 0. Chuẩn bị (~10 phút)
 
 **Người và đồ:**
@@ -239,6 +253,12 @@ Chi tiết ở SPEC §2 "Quyết định vòng 9". Tóm tắt:
 | D77 | Nhịp chống AFK kết thúc bằng 3 gói về chỗ cũ (chữa lỗi "bay") | |
 | D78 | **Gỡ kẹt**: clone túi + rương đầy tự trả bớt ≤ 12 món cho Leader; dọn kho luôn chừa 1 ô túi; lệnh chờ gỡ kẹt thay vì tạm dừng | |
 | D79 | **Khu giao cho từng lệnh** (ô *Khu giao* trên Điều phối — **thêm vào bố cục, cần bạn duyệt**; chat `khu N`); Leader không đi giao khu riêng | |
+| D80 | Cấp **thú cưỡi** không thuộc khoá món (rương / giao dịch không có byte cấp); `+cấp` cho thú cưỡi bị bỏ qua, có báo | |
+| D81 | **Gom đồ xếp chồng** rải nhiều clone về một nick (nick trống làm trung gian khi nick giữ hàng chật) — ô mới *Cài đặt → Kho → Gom đồ…* **cần bạn duyệt** | |
+| D82 | **Cửa xả** (`xa` / `xa xong`, tự mở khi Leader đầy mà bạn mời): giao thẳng vào clone; Leader dọn được cả khi bạn đứng chờ | |
+| D83 | **Log dễ đọc** mặc định; ô *Chi tiết (kỹ thuật)* trên khung log — **cần bạn duyệt**; tab Nhật ký có mục "Dễ đọc" | |
+| D84 | Lệnh khu riêng mà hàng đang trên Leader → chờ Leader dọn sang clone rồi giao (không huỷ "kho không có") | |
+| D85 | Khu chính chưa cài → hộp thoại khi bấm Chạy + ô trạng thái đỏ | |
 
 D53 (cmd 22 là tách **trang bị**) và D57 (không bao giờ dùng Khả di lệnh để đổi khu) là **sửa sai / chặn mất đồ**, không phải lựa chọn.
 
@@ -253,7 +273,11 @@ D53 (cmd 22 là tách **trang bị**) và D57 (không bao giờ dùng Khả di l
 - Người nhận phải đủ ô cho **từng lượt** (≤ 12 ô). Đá (vd. Đá cấp 7) **không xếp chồng** — 20 viên là 20 ô.
 - Nhân vật **không cầm vũ khí**: nhịp tự đánh 60 giây làm server báo "Vũ khí không thích hợp" (chỉ là một dòng
   log; kết nối vẫn giữ). Bot không tự mặc vũ khí (D38).
-- Đồ **đã rải** trên nhiều nick từ trước (trước D71) không tự gom lại; chỉ đồ mới về mới vào đúng nick.
+- Gom (D81) chỉ gom đồ **xếp chồng**; đá / trang bị cùng loại mỗi món vẫn một ô nên không gom. Đợt gom chờ khi có
+  lệnh rút hoặc cửa xả đang mở.
+- Cửa xả (D82): server khoá lời mời mới **31 giây** sau lần bạn mời Leader bị từ chối → lượt xả đầu tiên có thể chậm
+  ~30 giây. Clone nhận **tối đa (ô trống − 1)** món mỗi lượt; dưới 12 ô thì rời cửa đi cất rương.
+- Thú cưỡi (D80): kho không phân biệt cấp thú cưỡi.
 - Đồ người chơi nạp cho **Leader dự phòng**: nó tự dọn về nick "nhà" khi còn giữ vai (test sống đạt). Nếu Leader
   chính quay lại giữa chừng thì phần chưa dọn nằm trong rương dự phòng (vẫn tính vào kho, rút được).
 
@@ -271,3 +295,7 @@ D53 (cmd 22 là tách **trang bị**) và D57 (không bao giờ dùng Khả di l
 - [ ] `gdvp` / `nhan` của NSOTRUNGDUC.
 - [ ] **Kệ** gán tay, **Rác**, **dồn xu** (hạ ngưỡng xu để thử), **báo cáo ngày**, công tắc từng tính năng.
 - [ ] Chạy ≥2 giờ (M13): cột **Mất KN** có tăng không.
+- [ ] **Cửa xả** bằng acc thật của bạn: mời Leader khi Leader đầy (hoặc nhắn `xa`) → giao cho clone được liệt kê → `xa xong`.
+- [ ] **Log**: khung log mặc định chỉ dòng dễ đọc; tick **Chi tiết** thấy lại dòng kỹ thuật; tab Nhật ký mục "Dễ đọc".
+- [ ] **Gom đồ**: để kho rảnh vài phút, xem log `[GOM]` (tắt được ở Cài đặt → Kho).
+- [ ] Bấm **▶ Chạy** khi khu chính = −1 → có hộp thoại nhắc.

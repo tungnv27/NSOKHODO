@@ -1,6 +1,6 @@
 # NSOKHODO — Kho đồ chung cho Ninja School Online
 
-> **Trạng thái: ✅ ĐÃ CHỐT — SPEC v1.3 (2026-09-16; v1.1 = .NET 4.5.2 (D49); v1.2 = làm một lượt + bố cục A (D50, D51); v1.3 = các quyết định chốt trong lúc code, vòng 9 / D52–D63; vòng 10 / D64–D71 từ test sống; vòng 11 / D72–D79 từ lỗi user gặp khi dùng app thật). ĐÃ CODE P1–P4, ĐÃ TEST SỐNG PHẦN KHO, CHỜ USER TEST GIAO DIỆN + DUYỆT D52–D79.**
+> **Trạng thái: ✅ ĐÃ CHỐT — SPEC v1.3 (2026-09-16; v1.1 = .NET 4.5.2 (D49); v1.2 = làm một lượt + bố cục A (D50, D51); v1.3 = các quyết định chốt trong lúc code, vòng 9 / D52–D63; vòng 10 / D64–D71 từ test sống; vòng 11 / D72–D79 từ lỗi user gặp khi dùng app thật; vòng 12 / D80–D85: gom đồ, cửa xả, log dễ đọc). ĐÃ CODE P1–P4, ĐÃ TEST SỐNG PHẦN KHO, CHỜ USER TEST GIAO DIỆN + DUYỆT D52–D85.**
 > Sửa spec sau mốc này thì ghi thêm một vòng ở §1 và một dòng quyết định ở §2, **không sửa ngầm**.
 > **Test tay (P0a) XONG:** T0 cho thấy **giao dịch KHÔNG khoá đồ** → thiết kế đi tiếp. Kết quả đầy đủ: `TEST_TAY.md`.
 > **Việc đang làm:** chờ user chạy `TEST_2CHANG.md`. Trạng thái chi tiết: `docs/STATUS.md`.
@@ -100,6 +100,18 @@ MINH test sống trên server chính rồi chốt tạm D64–D71 (§2) — **ch
 > *(17/09 00:40)* Tôi nghĩ nên chọn được cả khu giao nữa. *(ảnh: lệnh 17 Tử tinh thạch cao cấp tạm dừng "chi con 0/17 (17 nam tren acc tam khong dung…)")* Lỗi gì thế? Rõ là có 17 mà? […] Kiểm tra thật kỹ nhé. Đừng để lỗi gì.
 
 MINH sửa rồi test sống lại, chốt tạm D72–D79 (§2) — **chờ user xác nhận**; D75 và ô *Khu giao* (D79) là thêm vào giao diện nên cần user duyệt bố cục.
+
+**Vòng 12 (17/09 sáng):**
+> Đầu tiên bạn sẽ sửa giúp tôi lỗi cao và vừa.
+> tiếp đề là gom đồ xếp chồng vào 1 nick:
+> - Nếu nick A đang cầm nhiều item mà nick B cũng có mà B chỉ còn 1 ô trống. THì A vẫn gđ đc với B nhưng chi từng item 1, sau khi giao địch xong item sẽ tự gộp ở bên B. như vậy trường hợp A cầm nhiều món trùng. thì rất bất tiện để gộp. Tôi đề xuất cách làm là trung gian 1 acc nữa cầm để gom, còn bạn tính toàn sao cho tối ưu thì làm.
+> - Tiếp đến trường hợp lúc tôi muốn xả 1 loạn item thì sao? Hôm qua tôi phải đợi leader dọn kho? Nhiều lúc còn không dọn. Bạn có thể tính toán trường hợp này không?
+>
+> Log cũng khó nhìn nữa. Ai giao gì + giao cho ai khó đọc với người dùng thường.
+> Tôi đã off tool hoàn toàn có thể on nick để test
+> Nếu bạn bạn thấy ổn rồi thì có thể commit + push rồi sửa tiếp nhé
+
+(Trước đó, 02:1x: ảnh tab Acc — cả kho "Rương trống: chưa đọc", "Trạng thái kho: Chưa cài khu chính" — *"Sao k check ruong nhi?"*; user tự cài lại khu chính.) MINH chốt tạm D80–D85 (§2) sau test offline + soát lỗi độc lập + test sống — **chờ user xác nhận**; khung log có thêm ô *Chi tiết* và Cài đặt có thêm ô *Gom đồ* (thêm vào giao diện, cần user duyệt).
 
 ## 2. Quyết định đã chốt
 
@@ -213,6 +225,17 @@ User test nhận đồ xong rồi giao MINH "tiếp tục test và hoàn thiện
 | D77 | **Nhịp chống AFK kết thúc bằng 3 gói về chỗ cũ** (kiểu `CharBurstMove`: gói 1–2 cách 20 ms). Vẫn giữ 4 bước Zang (−10, −52, −40, 0). Giữa nhịp mà mode tự di chuyển → bỏ nhịp (không kéo server về chỗ cũ); mà vào giao dịch → bỏ các bước còn lại, về chỗ cũ ngay. | M23: bước cuối một gói bị server bỏ qua → người khác thấy nhân vật **đứng lơ lửng ở y − 52** (user: *"Y = 216, thi thoảng thấy Y = 164"*). Có 3 gói về: đo 5/5 đứng đúng 216, kể cả khi đang kẹt sẵn; Leader trên kho thật 4/4 nhịp (2 bản build). |
 | D78 | **Gỡ kẹt clone + chừa ô.** (a) Dọn kho luôn **chừa 1 ô túi** cho mỗi clone (không nhận khi chỉ còn 1 ô; lượt nhận ≤ ô trống − 1). "Kho đầy" = mọi clone chỉ còn ô chừa. (b) Clone **kẹt cứng** (túi 0 ô + rương không nhận thêm, hoặc vừa báo `TUI_DAY`) → **lượt trả bớt**: clone sang khu chính đưa ≤ 12 món trong túi (không giữ cho lệnh nào) cho Leader, Leader đứng chờ (từ chối người khác trong lúc chờ); xong clone **nghỉ nhận dọn 30 phút**, Leader dọn số đồ đó sang nick khác. Có lệnh rút đang chờ clone đó → dùng tới gần hết túi Leader; trả bớt "phòng trước" giữ nguyên ngưỡng nhận của Leader. (c) Lệnh rút mà hàng nằm hết trong rương clone kẹt → **chờ gỡ kẹt**, không giao, không tạm dừng; báo `TUI_DAY` không tính hỏng. Không gỡ kẹt được (tắt dọn kho, Leader vắng / đầy túi, vừa trả bớt hỏng, túi toàn món giữ cho lệnh) → xử như lỗi phía acc, **tạm dừng có lý do** "khong tu go ket duoc: …". | Lỗi user 17/09 00:35: tungkhodo6 túi 30/30 (toàn đá) + rương 30/30 → rút 17 món 457 báo *"chi con 0/17 (17 nam tren acc tam khong dung)"*. Test sống: dựng lại đúng tình huống → trả 12 viên đá (4 s) → giao đủ 17/17 (12 s), lệnh không tạm dừng. |
 | D79 | **Chọn khu giao cho từng lệnh** (user 17/09: *"nên chọn được cả khu giao nữa"*). Khung Điều phối có ô **Khu giao** (−1 = khu chính) áp cho Giao ngay / Giao đơn / Rút gói; chat `lay … [khu N] [cho <tên>]`, `lay goi <tên> [khu N] [cho <tên>]`; Hàng chờ ghi "· khu N". Chọn đúng khu chính = khu chính (đổi khu chính sau vẫn theo). Lệnh khác khu không gộp chung. **Leader không bao giờ đi giao ở khu riêng** (không lập kế hoạch lên Leader). Khu có bot đứng → như khu chính (chờ người nhận có mặt). Khu **không bot nào đứng** → vẫn cho clone sang tìm, đợi ở đó 90 s; không thấy → **không tính hỏng**, 60 s sau mới thử lại; lệnh có người nhận đang được nhìn thấy luôn được giao **trước**; chuyến đi tìm không huỷ việc nội bộ; câu báo không lặp. Vào khu không được 90 s → khu riêng: **tạm dừng** "khong vao duoc khu N"; khu chính: tính một lần hỏng. Mọi lượt giao: vào khu mới phải **chờ 2,5 s** rồi mới tính vị trí người nhận. | Test sống: khu 5 (người nhận có mặt) giao ngay; khu 7 / khu 9 (người nhận tới sau) → đợi 90 s → 60 s sau giao được; chat `lay 456 1 khu 7` đạt. M24: mời 1,5 s sau khi vào khu → server huỷ phiên; chờ 2,5 s → đạt ngay lần đầu. |
+
+### Quyết định vòng 12 (MINH, 17/09 sáng — test sống 10:00–10:30 — chờ user xác nhận)
+
+| # | Quyết định | Vì sao |
+|---|---|---|
+| D80 | **Cấp của thú cưỡi (type 29–33) không thuộc khoá món** (luôn ghi 0); lệnh `+cấp` cho thú cưỡi bị bỏ qua và **báo rõ** "kho không phân biệt cấp thú cưỡi". | Client chính chủ 251 chỉ đọc byte cấp của thú cưỡi trong danh sách túi đầy đủ (sub 115); rương (gói 31), gói 8 và khung giao dịch (45) không có byte này → cùng một con lúc ở túi là "tpl+N", cất vào rương là "tpl" → rút ra báo thiếu. Byte vẫn đọc đúng ở mọi gói (đối chiếu `251/Controller.cs`); kho thật đang có thú cưỡi trong rương (439, 442, 523, 524). |
+| D81 | **Gom đồ xếp chồng về một nick.** Loại xếp chồng (không khoá) nằm trên ≥ 2 clone → một **đợt gom** về một **nick đích**, ghim tới khi xong. Chọn đích: **trống thêm nhiều ô nhất**, rồi **ít công nhất** = số giao dịch + số lần đích phải cất rương. Mỗi giao dịch nhận ≤ min(12, ô trống đích − 1) chồng (server đòi đủ một ô cho **từng** chồng dù sẽ tự gộp — user) và nick giao chỉ mang được ô trống + chồng đã ở túi → nick đích gần đầy túi không được chọn; mọi nick giữ hàng đều chật thì **nick trống làm trung gian** (ý của user). Loại mới với đích cần ô rương trống (không vượt). Chạy ở **khu của clone** (không đụng Leader / khu chính), chỉ khi: bật *Gom đồ*, bật cất rương, **không có lệnh rút, không mở cửa xả, không clone chờ nhả**. Đích nhận xong **cất rương trước** lượt sau. Lệnh rút cần nick đang gom → **huỷ lượt gom** (lệnh lên trước). Hỏng phía đích → dừng đợt, tránh đích 15 phút; hỏng phía nick giao → tránh nick đó 30 phút; xong / dừng → nghỉ 2 phút. Tuân kệ: Rác chỉ gom vào kệ Rác; có clone gán đúng kệ thì chỉ các clone đó làm đích. | User 17/09 (nguyên văn ở §1). Kho thật: 12 loại xếp chồng nằm trên cả tungkhodo1 lẫn tungkhodo4 (hai rương đầy). Test sống: 10 loại / 268 món về tungkhodo1 trong **1 giao dịch (5 s)**, cất rương gộp vào chồng sẵn có → tungkhodo4 trống thêm 10 ô, tungkhodo1 không tốn ô nào. |
+| D82 | **Cửa xả + Leader luôn dọn được khi Chủ kho chờ.** (a) Chủ kho nhắn `xa` — hoặc **tự mở** khi Leader dưới ngưỡng nhận mà Chủ kho mời — → tối đa **3 clone rảnh** (túi nhận được trọn một lượt 12 ô, không kệ Rác, không giữ hàng cho lệnh) sang khu chính **đứng thành hàng cạnh Leader** (±55 / ±110 px) và **chỉ nhận đồ của Chủ kho đó** (chừa 1 ô). Clone còn dưới 12 ô → rời cửa đi cất rương, clone khác vào thay; clone 90 s chưa vào được khu chính → bỏ (tránh 10 phút). Báo Chủ kho danh sách `ten(o trong)` (clone đang tới / đã tới / đổi). Đóng cửa: `xa xong`, 10 phút không xả thêm, Chủ kho rời khu chính 3 phút, tắt nhận đồ, kho đầy. Lệnh rút cần clone đang ở cửa → clone nhường. (b) Lời mời **bị từ chối** không còn làm Leader "sắp giao dịch" 10 giây (trước đây Chủ kho mời liên tục → Leader không bao giờ dọn). (c) Chủ kho trong khu chỉ giữ Leader đứng yên khi túi Leader **còn đủ ngưỡng nhận**. | User: *"muốn xả 1 loạt item… phải đợi leader dọn kho? Nhiều lúc còn không dọn"*. Test sống: Leader đầy → cửa tự mở (3 clone đứng x = 310 / 420 / 475) → 2 lượt 12 viên vào tungkhodo5 → tungkhodo5 rời cửa, tungkhodo2 vào thay; `xa xong`, `xa` đạt; nạp 2 lượt vào Leader khi Chủ kho vẫn đứng cạnh → 8 s sau Leader tự cất rương. Server khoá lời mời mới 31 s sau lần mời Leader bị từ chối (T4) → lượt xả đầu chậm ~30 s. |
+| D83 | **Log dễ đọc.** Bộ điều phối phát dòng *"[NHÃN] ai → ai: số + tên món (lệnh #N)"* cho: nạp, xả, giao lệnh, dọn kho, dồn xu, trả bớt, gom, tạo / xong / tạm dừng / huỷ lệnh, kho đầy, gỡ kẹt, nhả clone, đổi Leader; hỏng thì ghi lý do dễ hiểu (bỏ qua người lạ mời rồi thôi, "quá xa"). Ghi `sukien.log` (tab Nhật ký, mục đầu *"Dễ đọc: ai giao gì cho ai"*). Khung log dưới cùng **mặc định chỉ hiện dòng dễ đọc**; ô **Chi tiết (kỹ thuật)** hiện thêm dòng từng acc như trước (hai bộ đệm riêng). `app.log` không đổi. Thanh trạng thái hiện cửa xả đang mở. | User: *"Log cũng khó nhìn… Ai giao gì + giao cho ai khó đọc với người dùng thường"*; user dặn **không cần** sửa log kỹ thuật (dòng lặp, mã món). |
+| D84 | **Lệnh khu riêng mà phần thiếu đang nằm trên Leader → chờ, không huỷ / tạm dừng.** Phần có sẵn trên clone giao trước; Leader dọn **ưu tiên** loại đó sang clone (kể cả khi Chủ kho đang trong khu); lập lại kế hoạch → clone giao nốt. Lệnh chỉ xong khi đủ (giao xong phần đã lập mà còn chờ Leader thì **chưa** xong). Tắt dọn kho thì không chờ được (như cũ). | Kiểm kỹ #2 (D79 không lập kế hoạch lên Leader): bản cũ huỷ *"kho không có hàng"* trong khi hàng nằm ngay trên Leader; bản sửa đầu còn đóng "XONG 5/10" (agent soát lỗi bắt được). Test sống: 20 viên ở khu 7 (10 trên clone, 12 trên Leader) → giao 8 + 2, Leader dọn 12 sang tungkhodo3, tungkhodo3 giao 10 → **20/20 trong 29 s**. |
+| D85 | **Khu chính chưa cài (−1)**: bấm ▶ Chạy → hộp thoại hỏi mở *Cài đặt → Kho* (chạy tự động `--chay` thì chỉ ghi log); ô *Trạng thái kho* tô đỏ, ghi "(Cài đặt → Kho)". | User 17/09 02:1x: *"Sao k check ruong nhi?"* — cả kho đứng im vì khu chính −1, dòng cảnh báo cuối thanh trạng thái không đủ nổi. |
 
 ## 3. Phạm vi
 
@@ -354,8 +377,9 @@ Người chơi tới khu chính, chỉ vào Leader rồi mời giao dịch bằn
 ## 6. Dọn kho — Leader luôn giữ túi trống
 
 **Điều kiện chạy:**
-- Leader rảnh: không có phiên giao dịch, không có ai mời trong 10 giây gần nhất, không đang giữ cửa.
-- **Không có Chủ kho nào trong khu chính.**
+- Leader rảnh: không có phiên giao dịch, không có lời mời **được nhận** trong 10 giây gần nhất, không đang giữ cửa.
+- **Không có Chủ kho nào trong khu chính** — trừ khi túi Leader đã dưới ngưỡng nhận, hoặc có lệnh khu riêng đang chờ hàng trên Leader (D82, D84).
+- Nhiều đồ cần nạp một lúc → **cửa xả** (D82): Chủ kho giao thẳng vào clone. Đồ xếp chồng rải nhiều clone → **gom** (D81).
 - Người lạ có trong khu vẫn dọn; họ mời trong lúc Leader bận thì server báo "đang có giao dịch khác" (T5).
 - Chủ kho nhắn `nap` thì phiên dọn đang chạy bị huỷ ngay (§5).
 
@@ -560,6 +584,7 @@ Server không cho bán món nào (T12), nên tool **không tự bán, không t�
 | `tiep [#số]` | chạy tiếp lệnh đang tạm dừng (R11) | `@111 Tiep lenh #12` |
 | `huy [#số]` | huỷ lệnh của chính mình | `@106 Da huy lenh #12` |
 | `theo <id> [N]` · `botheo <id>` | bật / tắt theo dõi món (D36) | `@110 Theo doi 457: bao khi duoi 50` |
+| `xa` · `xa xong` | mở / đóng **cửa xả**: giao thẳng vào clone (D82) | `@112 Cua xa mo 10 phut, clone dang toi ~10s, moi GD (o trong): tungkhodo5(29), tungkhodo3(29)` |
 
 ## 10. Giao diện — ✅ BỐ CỤC A ĐÃ DUYỆT (D51)
 
@@ -607,6 +632,8 @@ Luật chung của họ NSO: đổi **bố cục** thì phải trình user duy�
 - **Điều phối** (D21): chọn món → số lượng → người nhận (gõ tên bất kỳ, hoặc chọn Chủ kho) → **Giao ngay** → vào hàng chờ.
   - **Đơn nhiều món** (D75, *chờ user duyệt*): **+ Vào đơn** thêm dòng vào *Đơn đang soạn* (cùng món + cấp thì cộng dồn) → **Giao đơn** = một lệnh nhiều dòng; *Xoá dòng* / *Xoá hết*. Khung nằm ngay dưới nút Giao, phía trên *Gói*.
 - **Cài đặt → Kho → Đăng nhập** (D76): tick *Giới hạn số acc login cùng lúc vào một máy chủ* + số acc.
+- **Cài đặt → Kho → Bật / tắt** (D81, *chờ user duyệt*): *Gom đồ xếp chồng rải nhiều clone về một nick*.
+- **Khung log** (D83, *chờ user duyệt*): ô **Chi tiết (kỹ thuật)** ở đầu khung; mặc định chỉ dòng dễ đọc. Thanh trạng thái thêm *"Cửa xả: … → … · còn N phút · đã nhận M món"* khi đang mở.
 - **Hàng chờ:** số lệnh, món, số lượng, người nhận, nguồn (tool / chat + tên), tiến độ, clone đang giao, trạng thái (chờ / đang giao / tạm dừng + lý do), nút *Tiếp* / *Huỷ*.
 - **Nhật ký:** nhập / xuất / dọn / dồn xu / nhả clone, lọc theo ngày, theo acc, theo đối tác (đọc từ `Logs/<ngày>/`). Có nút mở thư mục log.
 - **Cài đặt:** toàn bộ bảng ở §4. Riêng toạ độ Leader: ô X / Y (để trống = tự do), nút *Lấy chỗ đang đứng*, nút *Xoá toạ độ*.

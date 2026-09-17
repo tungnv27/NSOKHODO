@@ -86,6 +86,7 @@ static class KiemKho
         KiemDieuPhoi();
         KiemNhaChong();
         KiemGoKetVaKhu();
+        KiemGomVaXa();
 
         NhatKy.XaNgay();
         try { Directory.Delete(tam, true); } catch { }
@@ -102,7 +103,12 @@ static class KiemKho
             "459|34|0|1|Ngọc khảm\r\n" +
             "460|27|0|1|Thư tay\r\n" +
             "461|27|0|1|Giấy vụn\r\n" +
-            "462|29|0|1|Thú cưỡi\r\n", new UTF8Encoding(false));
+            "462|29|0|1|Thú cưỡi\r\n" +
+            "463|27|1|1|Hoa tuyết\r\n" +
+            "464|27|1|1|Nham thạch\r\n" +
+            "465|27|1|1|Pha lê\r\n" +
+            "466|27|1|1|Phôi giáp\r\n" +
+            "467|27|1|1|Quả chaka\r\n", new UTF8Encoding(false));
         BangMon.Nap();
     }
 
@@ -329,6 +335,10 @@ static class KiemKho
         Xac(KhoaMon.TryParse("457+8hk", out k2) && k2.Equals(k) && k2.Han, "KhoaMon.TryParse nguoc lai");
         Xac(new KhoaMon(457, 8, false, true).Equals(k) && k.Khop(Mon(457, 1, 8, false, true)),
             "D72: co han KHONG thuoc khoa (server bao khong on dinh giua goi giao dich va danh sach tui)");
+        Xac(new KhoaMon(462, 5, false, false).Up == 0 && new KhoaMon(462, 0, false, false).Khop(Mon(462, 1, 5, false, false))
+            && KhoaMon.TryParse("462+5", out k2) && k2.Equals(new KhoaMon(462, 0, false, false)),
+            "D80: thu cuoi - cap KHONG thuoc khoa (tui co byte cap, ruong / cmd 8 / giao dich thi khong)");
+        Xac(!new KhoaMon(458, 5, false, false).Khop(Mon(458, 1, 7, false, false)), "trang bi van phan biet cap");
         Xac(KhoaMon.TryParse("460", out k2) && k2.Tpl == 460 && k2.Up == 0 && !k2.Han && !k2.Khoa, "KhoaMon '460'");
         Xac(!KhoaMon.TryParse("abc", out k2), "KhoaMon 'abc' -> false");
 
@@ -448,6 +458,14 @@ static class KiemKho
         var lMoi = LenhRut(457, -1, 1, "X");
         h2.Them(lMoi);
         Xac(lMoi.So > l7.So, "so lenh tiep tuc tang sau khi nap (" + lMoi.So + ")");
+
+        var soT = new SoKho();
+        soT.CapNhat(TaoClient("ta", "TA", 11, Tui(5, Mon(462, 1, 5, false, false)), Tui(5, Mon(462, 1)), 0, "S"));
+        var hT = new HangCho();
+        var lT = LenhRut(462, 3, 2, "NhanT");
+        hT.Them(lT);
+        Xac(hT.LapKeHoach(lT, soT, tatCa) == null && lT.KeHoach.Sum(p => p.SoLuong) == 2,
+            "D80: lay thu cuoi +3 -> bo qua cap: lay ca con o tui (doc duoc +5) lan con o ruong");
     }
 
     static LenhRut LenhRut(short tpl, int cap, int sl, string nguoi)
@@ -1242,7 +1260,372 @@ static class KiemKho
         var lL = dp.Hang.DangMo.FirstOrDefault();
         if (lL != null) dp.HuyLenhTuTool(lL.So);
         nhip();
+
+        // Bat don kho: lenh khu rieng ma hang chi tren Leader -> CHO Leader don (khong huy "kho khong co"), Leader don NGAY
+        // du Chu kho dang trong khu va Leader con cho; hang sang clone -> clone giao o khu 7.
+        // Lenh 2 x 461 o khu 7: 1 tren gkM, 1 tren Leader.
+        cfg.BatDonKho = true;
+        cK.GameState.MyChar.BagItems = Tui(30);
+        cM.GameState.MyChar.BagItems = Tui(30, Mon(461, 1));
+        foreach (var acc in new[] { "gkL", "gkK", "gkM" })
+        {
+            var vv = dp.ViecCua(acc);
+            if (vv != null) dp.BaoViec(acc == "gkL" ? cL : acc == "gkK" ? cK : cM, new BaoCaoViec { Viec = vv, MaLoi = MaLoiViec.BI_HUY, LyDo = "kiem" });
+        }
+        DatField(dp, "_donNghiDen", DateTime.MinValue);
+        DatField(dp, "_moiDenLeaderLuc", DateTime.MinValue);
+        ((IDictionary)LayField(dp, "_nghiNhanDon")).Clear();
+        ((IDictionary)LayField(dp, "_tranh")).Clear();
+        nhip();
+        dp.RutTuTool(461, -1, 2, "ChuG", 7);
+        nhip();
+        var lw = dp.Hang.DangMo.FirstOrDefault();
+        Xac(lw != null && lw.ChoLeaderDon && lw.DangMo && lw.TrangThai != TrangThaiLenh.TamDung,
+            "bat don kho: lenh khu 7 thieu 1 (dang tren Leader) -> CHO Leader don, khong tam dung / huy");
+        var vRm = dp.ViecCua("gkM");
+        Xac(vRm != null && vRm.MucDich == "rut" && vRm.Khu == 7 && vRm.TongConLai == 1, "phan co san (gkM) giao truoc o khu 7");
+        var vdg = dp.ViecCua("gkK");
+        Xac(vdg != null && vdg.Loai == LoaiViec.DoiNhan && vdg.TuBotAcc == "gkL",
+            "Leader con 29 o + Chu kho dang trong khu -> VAN don ngay (gkK nhan) vi lenh dang cho hang tren Leader");
+
+        // gkM giao xong phan cua no -> lenh CHUA xong (review 17/09: truoc day dong "XONG 1/2").
+        dp.LayViec(cM);
+        var pR = new PhienGiaoDich(cM, VaiGiaoDich.Giao, 77, "ChuG", 120000, 31000, 0, null, null, null);
+        var kqR = new KetQuaGiaoDich { ThanhCong = true, Vai = VaiGiaoDich.Giao, DoiPhuong = "ChuG", DoiPhuongId = 77 };
+        kqR.MonDua.Add(new KeyValuePair<byte, Item>(0, Mon(461, 1)));
+        DatProp(pR, "KetQua", kqR);
+        dp.BaoPhien(cM, pR, vRm);
+        cM.GameState.MyChar.BagItems = Tui(30);
+        dp.BaoViec(cM, new BaoCaoViec { Viec = vRm, Xong = true });
+        nhip();
+        nhip();
+        Xac(lw.DangMo && lw.TongDaGiao == 1 && lw.ChoLeaderDon, "giao xong 1/2 -> lenh van mo, van cho phan tren Leader");
+
+        DatKhu(cK, 22, 3);
+        nhip();
+        var vLd = dp.ViecCua("gkL");
+        Xac(vLd != null && vLd.MucDich == "don" && vLd.Dong.Any(d => d.Khoa.Tpl == 461), "Leader giao 461 cho gkK");
+        if (vLd != null && vdg != null)
+        {
+            dp.LayViec(cL);
+            cL.GameState.MyChar.BagItems = Tui(30);
+            cK.GameState.MyChar.BagItems = Tui(30, Mon(461, 1));
+            dp.BaoViec(cL, new BaoCaoViec { Viec = vLd, Xong = true });
+            nhip();
+            nhip();
+            dp.LayViec(cK);
+            dp.BaoViec(cK, new BaoCaoViec { Viec = vdg, MaLoi = MaLoiViec.BI_HUY, LyDo = "don xong" });
+            DatKhu(cK, 22, 5);
+            nhip();
+            nhip();
+        }
+        var vRk = dp.ViecCua("gkK");
+        Xac(!lw.ChoLeaderDon && lw.DangMo && vRk != null && vRk.MucDich == "rut" && vRk.Khu == 7 && vRk.TongConLai == 1,
+            "hang da sang gkK -> lap lai, gkK giao not 1 o khu 7");
+        dp.HuyLenhTuTool(lw.So);
+        nhip();
         try { File.Delete(HangCho.DuongDan); } catch { }
+    }
+
+    // ================= 10e. Gom do xep chong (D81) + cua xa (D82) + log de doc (D83) — user 17/09 =================
+
+    static Item[] TuiKhoa(int soO, int trong)
+    {
+        var a = OTrong(soO);
+        for (int i = 0; i < soO - trong; i++) a[i] = Mon(460, 1, 0, false, true);
+        return a;
+    }
+
+    static string PhienDonMucDich(object d)
+    {
+        return d == null ? null : (string)d.GetType().GetField("MucDich").GetValue(d);
+    }
+
+    static void KiemGomVaXa()
+    {
+        Console.WriteLine("=== Gom do xep chong (D81) + cua xa (D82) + log de doc (D83) ===");
+
+        // ---- lenh chat ----
+        Bang(LenhChat.Doc("xa").Loai, LoaiLenh.Xa, "chat: xa");
+        Bang(LenhChat.Doc("Xả xong").Loai, LoaiLenh.XaXong, "chat: xa xong (co dau)");
+        Bang(LenhChat.Doc("xa abc").Loai, LoaiLenh.Loi, "chat sai: xa abc");
+
+        // ---- log de doc ----
+        var dsMon = new List<KhoDieuPhoi.MonDoc> { new KhoDieuPhoi.MonDoc(457, 0, 5), new KhoDieuPhoi.MonDoc(457, 0, 3), new KhoDieuPhoi.MonDoc(458, 5, 1) };
+        Bang(KhoDieuPhoi.MonDeDoc(dsMon, 1000), "8 Đá cấp 5, 1 Áo choàng +5 + 1.000 xu", "D83: mo ta mon de doc (gop cung loai, ten that, xu)");
+        Bang(KhoDieuPhoi.LyDoDeDoc(MaLoiGiaoDich.THIEU_O, "x"), "người nhận không đủ ô trống", "D83: ma loi -> cau de doc");
+
+        // ================= GOM =================
+        // A, B: tui chi con 2 o (28 mon khoa), ruong giu 5 loai xep chong. C: trong. Dich tot nhat = C (trung gian):
+        // A / B lam dich thi moi luot chi nhan 1 chong (5 luot); C nhan 5 chong mot luot (2 luot).
+        // A, B: tui 23 mon khoa + 5 chong + 2 o trong; ruong day mon khoa (khong cat duoc). C: trong.
+        Func<Item[]> tui5 = delegate
+        {
+            var t = TuiKhoa(30, 7);
+            t[23] = Mon(463, 10); t[24] = Mon(464, 20); t[25] = Mon(465, 30); t[26] = Mon(466, 40); t[27] = Mon(467, 50);
+            return t;
+        };
+        var gL = TaoClient("gmL", "GmLeader", 5001, Tui(30), Tui(30), 0, "Kiem");
+        var gA = TaoClient("gmA", "GmA", 5002, tui5(), TuiKhoa(30, 0), 0, "Kiem");
+        var gB = TaoClient("gmB", "GmB", 5003, tui5(), TuiKhoa(30, 0), 0, "Kiem");
+        var gC = TaoClient("gmC", "GmC", 5004, Tui(30), Tui(30), 0, "Kiem");
+        DatKhu(gL, 22, 3);
+        foreach (var c in new[] { gA, gB, gC }) DatKhu(c, 22, 5);
+        var accs = new List<AccountConfig> { gL.Config, gA.Config, gB.Config, gC.Config };
+        var fleet = new FleetManager();
+        ((List<NsoClient>)LayField(fleet, "_clients")).AddRange(new[] { gL, gA, gB, gC });
+        var cfg = new KhoConfig { Leader = "gmL", KhuChinh = 3, KhuPhu = 5, RaoBat = false, BatDonKho = false };
+        cfg.DatChuKho(new[] { "ChuG" });
+        var dp = new KhoDieuPhoi(fleet, delegate { return accs; }, cfg);
+        var suKien = new List<string>();
+        dp.OnSuKien += delegate(string s) { suKien.Add(s); };
+        Action nhip = delegate { Goi(dp, "Nhip"); };
+        Action choGom = delegate
+        {
+            DatField(dp, "_gomNghiDen", DateTime.MinValue);
+            DatField(dp, "_gomXetLuc", DateTime.MinValue);
+        };
+        nhip();
+        foreach (var c in new[] { gL, gA, gB, gC }) ChanGui(dp.Kenh, c);
+
+        Bang((string)LayField(dp, "_gomDich"), "gmC", "D81: A / B chi con 1 o nhan -> dich la C (nick trong lam trung gian)");
+        var gomD = LayField(dp, "_gom");
+        string nguoiGiao = gomD == null ? null : (string)gomD.GetType().GetField("Clone").GetValue(gomD);
+        var vGiao = nguoiGiao != null ? dp.ViecCua(nguoiGiao) : null;
+        var vNhan = dp.ViecCua("gmC");
+        Xac(vGiao != null && vGiao.MucDich == "gom" && vGiao.Khu == 5 && vGiao.NguoiNhanLaBot && vGiao.NguoiNhan == "GmC" && vGiao.Dong.Count == 5,
+            "luot 1: " + nguoiGiao + " giao ca 5 chong cho C o khu cua clone (5) trong MOT luot");
+        Xac(vNhan != null && vNhan.Loai == LoaiViec.DoiNhan && vNhan.Khu == 5 && vNhan.TuBotAcc == nguoiGiao && vNhan.TuNguoi == null,
+            "C doi nhan o khu 5 tu " + nguoiGiao);
+        Xac(suKien.Any(x => x.StartsWith("[GOM]") && x.Contains("5 loại") && x.Contains("GmC")), "log de doc: bat dau gom: " + string.Join(" / ", suKien.ToArray()));
+        var cGiao = nguoiGiao == "gmA" ? gA : gB;
+        var cKhac = nguoiGiao == "gmA" ? gB : gA;
+        Xac(dp.XetLoiMoi(gC, cGiao.GameState.MyChar.CharId, null).Nhan, "C nhan loi moi cua nick giao gom");
+        Xac(dp.XetLoiMoi(gC, cKhac.GameState.MyChar.CharId, null).TuChoi, "C khong nhan loi moi cua nick khac");
+
+        // Nick giao xong: 5 chong sang tui C.
+        dp.LayViec(cGiao);
+        dp.LayViec(gC);
+        cGiao.GameState.MyChar.BagItems = TuiKhoa(30, 7);
+        gC.GameState.MyChar.BagItems = Tui(30, Mon(463, 10), Mon(464, 20), Mon(465, 30), Mon(466, 40), Mon(467, 50));
+        dp.BaoViec(cGiao, new BaoCaoViec { Viec = vGiao, Xong = true });
+        nhip();
+        Xac(vNhan.BiHuy && LayField(dp, "_gom") == null && (int)LayField(dp, "_gomDotLuot") == 1, "giao xong -> C thoi doi, dem 1 luot");
+        dp.BaoViec(gC, new BaoCaoViec { Viec = vNhan, MaLoi = MaLoiViec.BI_HUY, LyDo = "xong luot gom" });
+        nhip();
+        var vCat = dp.ViecCua("gmC");
+        Xac(vCat != null && vCat.Loai == LoaiViec.CatRuong, "C nhan xong -> cat ruong truoc luot sau");
+        choGom();
+        nhip();
+        Xac(LayField(dp, "_gom") == null, "C dang cat ruong -> chua mo luot 2");
+        dp.LayViec(gC);
+        gC.GameState.MyChar.BagItems = Tui(30);
+        gC.GameState.MyChar.BoxItems = Tui(30, Mon(463, 10), Mon(464, 20), Mon(465, 30), Mon(466, 40), Mon(467, 50));
+        dp.BaoViec(gC, new BaoCaoViec { Viec = vCat, Xong = true });
+        nhip();
+        choGom();
+        nhip();
+        var vGiao2 = dp.ViecCua(cKhac.Config.Username);
+        Xac(vGiao2 != null && vGiao2.MucDich == "gom" && vGiao2.Dong.Count == 5 && dp.ViecCua("gmC") != null,
+            "luot 2: nick con lai giao 5 chong cho C");
+        dp.LayViec(cKhac);
+        var vNhan2 = dp.ViecCua("gmC");
+        dp.LayViec(gC);
+        cKhac.GameState.MyChar.BagItems = TuiKhoa(30, 7);
+        dp.BaoViec(cKhac, new BaoCaoViec { Viec = vGiao2, Xong = true });
+        nhip();
+        dp.BaoViec(gC, new BaoCaoViec { Viec = vNhan2, MaLoi = MaLoiViec.BI_HUY, LyDo = "xong luot gom" });
+        nhip();
+        var vCat2 = dp.ViecCua("gmC");
+        if (vCat2 != null)
+        {
+            dp.LayViec(gC);
+            dp.BaoViec(gC, new BaoCaoViec { Viec = vCat2, Xong = true });
+        }
+        choGom();
+        nhip();
+        Xac(LayField(dp, "_gomDich") == null && suKien.Any(x => x.StartsWith("[GOM] Xong") && x.Contains("2 lượt")),
+            "het nick giu -> xong dot, log de doc: " + suKien.LastOrDefault());
+        choGom();
+        nhip();
+        Xac(LayField(dp, "_gomDich") == null && LayField(dp, "_gom") == null, "khong con loai nao rai -> khong mo dot moi");
+
+        // Nick B chi con 1 o ma dang giu -> KHONG lam dich; A trong nhieu va cung giu -> A la dich, 1 luot.
+        gC.GameState.MyChar.BoxItems = Tui(30);
+        gA.GameState.MyChar.BagItems = Tui(30);
+        gA.GameState.MyChar.BoxItems = Tui(30, Mon(463, 1), Mon(464, 1));
+        gB.GameState.MyChar.BagItems = TuiKhoa(30, 2);
+        gB.GameState.MyChar.BoxItems = Tui(30, Mon(463, 5), Mon(464, 5));
+        choGom();
+        nhip();
+        choGom();
+        nhip();
+        Bang((string)LayField(dp, "_gomDich"), "gmA", "A trong 30 o + dang giu -> dich (B con 1 o nhan khong lam dich)");
+        var vB = dp.ViecCua("gmB");
+        Xac(vB != null && vB.MucDich == "gom" && vB.Dong.Count == 2 && dp.ViecCua("gmA") != null && dp.ViecCua("gmA").TuBotAcc == "gmB",
+            "B giao 2 chong cho A trong mot luot");
+
+        // Lenh rut can nick dang gom -> huy luot gom (lenh len truoc).
+        gL.GameState.CurrentMap.OtherPlayers.Add(new PlayerInfo { CharId = 5099, Name = "ChuG", X = 300, Y = 200 });
+        dp.RutTuTool(464, -1, 5, "ChuG");
+        nhip();
+        Xac(LayField(dp, "_gom") == null && vB.BiHuy, "lenh rut 464 (dang tren B, B dang gom) -> huy luot gom");
+        dp.LayViec(gB);
+        dp.BaoViec(gB, new BaoCaoViec { Viec = vB, MaLoi = MaLoiViec.BI_HUY, LyDo = "nhuong cho lenh rut" });
+        var vA = dp.ViecCua("gmA");
+        if (vA != null) { dp.LayViec(gA); dp.BaoViec(gA, new BaoCaoViec { Viec = vA, MaLoi = MaLoiViec.BI_HUY, LyDo = "kiem" }); }
+        nhip();
+        var lG = dp.Hang.DangMo.FirstOrDefault();
+        Xac(lG != null && dp.ViecCua("gmB") != null && dp.ViecCua("gmB").MucDich == "rut", "nhip sau: B giao lenh rut");
+        choGom();
+        nhip();
+        Xac(LayField(dp, "_gom") == null, "con lenh rut -> khong gom");
+        if (lG != null) dp.HuyLenhTuTool(lG.So);
+        nhip();
+
+        // ================= CUA XA =================
+        // Leader con 5 o (duoi nguong 12), Chu kho dung canh. xA, xB trong 30; xC con 8 o; xD con 3 o (khong du vao cua).
+        var xL = TaoClient("xaL", "XaLeader", 6001, TuiKhoa(30, 5), Tui(30), 0, "Kiem");
+        for (int i = 0; i < 20; i++) xL.GameState.MyChar.BagItems[i] = Mon(460, 1);   // 20 mon don duoc, 5 khoa, 5 trong
+        var xA = TaoClient("xaA", "XaA", 6002, Tui(30), Tui(30), 0, "Kiem");
+        var xB = TaoClient("xaB", "XaB", 6003, Tui(30), Tui(30), 0, "Kiem");
+        var xC = TaoClient("xaC", "XaC", 6004, TuiKhoa(30, 14), Tui(30), 0, "Kiem");
+        var xD = TaoClient("xaD", "XaD", 6005, TuiKhoa(30, 3), Tui(30), 0, "Kiem");
+        DatKhu(xL, 22, 3);
+        foreach (var c in new[] { xA, xB, xC, xD }) DatKhu(c, 22, 5);
+        xL.GameState.CurrentMap.OtherPlayers.Add(new PlayerInfo { CharId = 6077, Name = "ChuX", X = 360, Y = 216 });
+        xL.GameState.CurrentMap.OtherPlayers.Add(new PlayerInfo { CharId = 6088, Name = "NguoiLa", X = 380, Y = 216 });
+        var accsX = new List<AccountConfig> { xL.Config, xA.Config, xB.Config, xC.Config, xD.Config };
+        var fleetX = new FleetManager();
+        ((List<NsoClient>)LayField(fleetX, "_clients")).AddRange(new[] { xL, xA, xB, xC, xD });
+        var cfgX = new KhoConfig { Leader = "xaL", KhuChinh = 3, KhuPhu = 5, RaoBat = false, BatCatRuong = false, BatGomChong = false };
+        cfgX.LeaderX = 365;
+        cfgX.LeaderY = 216;
+        cfgX.DatChuKho(new[] { "ChuX" });
+        var dx = new KhoDieuPhoi(fleetX, delegate { return accsX; }, cfgX);
+        var suKienX = new List<string>();
+        dx.OnSuKien += delegate(string s) { suKienX.Add(s); };
+        Action nhipX = delegate { Goi(dx, "Nhip"); };
+        nhipX();
+        foreach (var c in new[] { xL, xA, xB, xC, xD }) ChanGui(dx.Kenh, c);
+        nhipX();
+
+        // Chu kho dung canh + Leader duoi nguong -> Leader VAN don kho (truoc day dung im cho Chu kho).
+        var vDon = dx.ViecCua("xaA") ?? dx.ViecCua("xaB");
+        Xac(vDon != null && vDon.Loai == LoaiViec.DoiNhan && vDon.TuBotAcc == "xaL",
+            "Leader con 5 o (< nguong 12) + Chu kho trong khu -> VAN don kho (goi clone sang nhan)");
+        // Bo luot don de kiem cua xa rieng.
+        foreach (var c in new[] { xA, xB, xC, xD })
+        {
+            var vv = dx.ViecCua(c.Config.Username);
+            if (vv == null) continue;
+            vv.Huy("kiem");
+            dx.LayViec(c);
+            dx.BaoViec(c, new BaoCaoViec { Viec = vv, MaLoi = MaLoiViec.BI_HUY, LyDo = "kiem" });
+        }
+        DatField(dx, "_don", null);
+        cfgX.BatDonKho = false;
+        nhipX();
+        RutTin(dx.Kenh, xL);
+
+        var qdL = dx.XetLoiMoi(xL, 6077, null);
+        Xac(qdL.TuChoi && (DateTime)LayField(dx, "_moiDenLeaderLuc") == DateTime.MinValue,
+            "Leader day tu choi Chu kho - KHONG danh dau 'sap giao dich' (truoc day chan Leader don kho mai)");
+        nhipX();
+        var xa = LayField(dx, "_xa");
+        var vxA = dx.ViecCua("xaA");
+        var vxB = dx.ViecCua("xaB");
+        var vxC = dx.ViecCua("xaC");
+        Xac(xa != null && vxA != null && vxA.TuNguoi == "ChuX" && vxB != null && vxB.TuNguoi == "ChuX" && vxC != null && vxC.TuNguoi == "ChuX"
+            && dx.ViecCua("xaD") == null, "Leader day -> tu mo cua xa: xA, xB, xC (xD con 2 o, duoi mot luot 12 o, khong vao)");
+        Xac(vxA.Khu == -1 && vxA.DungY == 216 && new[] { vxA.DungX, vxB.DungX, vxC.DungX }.Distinct().Count() == 3
+            && vxA.HetHan > DateTime.Now.AddMinutes(9), "clone cua xa: sang khu chinh, dung thanh hang canh Leader, han ~11 phut");
+        var tinX = Gop(RutTin(dx.Kenh, xL));
+        Xac(tinX.Contains("ChuX: Leader day, clone dang toi ~10s, moi GD (o trong): XaA(29), XaB(29), XaC(13)")
+            && tinX.Contains("ChuX: Giao xong nhan: xa xong"),
+            "bao Chu kho danh sach clone (dang toi khu chinh): " + tinX);
+        Xac(suKienX.Any(x => x.StartsWith("[XẢ] Mở cửa xả cho ChuX (Leader đầy)")), "log de doc: mo cua xa");
+        Xac(dx.MoTaXa.StartsWith("Cửa xả: ChuX → XaA") && dx.MoTaXa.Contains("còn 10 phút"), "thanh trang thai: " + dx.MoTaXa);
+
+        DatKhu(xA, 22, 3);
+        DatKhu(xD, 22, 3);
+        var qdA = dx.XetLoiMoi(xA, 6077, null);
+        Xac(qdA.Nhan && qdA.TenMongDoi == "ChuX" && qdA.LaAi == "chukho", "clone cua xa nhan loi moi cua Chu kho");
+        var mon12 = new MonGiaoDich[12];
+        var mon30 = new MonGiaoDich[30];
+        for (int i = 0; i < 30; i++) { var m = new MonGiaoDich { TemplateId = 460, Quantity = 1 }; if (i < 12) mon12[i] = m; mon30[i] = m; }
+        Xac(qdA.KiemHang(0, mon12) == null && qdA.KiemHang(0, mon30) != null && qdA.KiemHang(0, new MonGiaoDich[0]) != null,
+            "kiem hang cua xa: 12 mon duoc, 30 mon (qua 29 o) / khoa rong -> tu choi");
+        Xac(dx.XetLoiMoi(xA, 6088, null).TuChoi, "clone cua xa KHONG nhan nguoi la");
+        Xac(dx.XetLoiMoi(xD, 6077, null).TuChoi, "clone ngoai cua xa KHONG nhan Chu kho");
+
+        // Xa 12 mon vao xA; tui xA con 5 o (< 6 sau khi chua) -> roi cua, clone khac vao thay (khong con ai du cho).
+        var pX = new PhienGiaoDich(xA, VaiGiaoDich.Nhan, 6077, "ChuX", 120000, 0, 0, null, null, null);
+        var kqX = new KetQuaGiaoDich { ThanhCong = true, Vai = VaiGiaoDich.Nhan, DoiPhuong = "ChuX", DoiPhuongId = 6077 };
+        kqX.MonNhan = new[] { new MonGiaoDich { TemplateId = 457, Quantity = 12 }, new MonGiaoDich { TemplateId = 458, Upgrade = 5, Quantity = 1 } };
+        DatProp(pX, "KetQua", kqX);
+        xA.GameState.MyChar.BagItems = TuiKhoa(30, 5);
+        dx.BaoPhien(xA, pX, null);
+        nhipX();
+        Xac(vxA.BiHuy && dx.ThongKe.NapMon == 13, "xA nhan xong, tui gan day -> roi cua di cat; thong ke nap 13 mon");
+        Xac(suKienX.Any(x => x == "[XẢ] ChuX → XaA: 12 Đá cấp 5, 1 Áo choàng +5"), "log de doc: ai giao gi cho ai: " + suKienX.LastOrDefault());
+        tinX = Gop(RutTin(dx.Kenh, xL));
+        Xac(tinX.Contains("XaA da nhan 13 mon") && tinX.Contains("Cua xa doi: moi GD XaB(29), XaC(13)"), "bao Chu kho: da nhan + cua doi: " + tinX);
+        dx.LayViec(xA);
+        dx.BaoViec(xA, new BaoCaoViec { Viec = vxA, MaLoi = MaLoiViec.BI_HUY, LyDo = "tui gan day - di cat ruong" });
+        nhipX();
+        Xac(dx.MoTaXa.Contains("XaB, XaC") && dx.MoTaXa.Contains("đã nhận 13 món"), "cua xa con xB, xC: " + dx.MoTaXa);
+
+        // Chu kho bao xong -> dong cua, huy viec clone.
+        Goi(dx, "NhanChatRieng", xL, "ChuX", "xa xong");
+        nhipX();
+        Xac(LayField(dx, "_xa") == null && vxB.BiHuy && vxC.BiHuy && dx.MoTaXa == "", "xa xong -> dong cua xa");
+        tinX = Gop(RutTin(dx.Kenh, xL));
+        Xac(tinX.Contains("Dong cua xa") && tinX.Contains("13 mon / 1 luot"), "bao dong cua: " + tinX);
+        foreach (var c in new[] { xB, xC })
+        {
+            var vv = dx.ViecCua(c.Config.Username);
+            dx.LayViec(c);
+            dx.BaoViec(c, new BaoCaoViec { Viec = vv, MaLoi = MaLoiViec.BI_HUY, LyDo = "dong cua xa" });
+        }
+        nhipX();
+
+        // Lenh `xa` mo lai; nguoi khac moi -> khong; het gio -> dong.
+        Goi(dx, "NhanChatRieng", xL, "ChuX", "xa");
+        nhipX();
+        tinX = Gop(RutTin(dx.Kenh, xL));
+        Xac(LayField(dx, "_xa") != null && tinX.Contains("Cua xa mo 10 phut, clone dang toi ~10s, moi GD (o trong): XaB(29), XaC(13)"), "lenh xa -> mo cua: " + tinX);
+        DatKhu(xB, 22, 3);
+        DatKhu(xC, 22, 3);
+        nhipX();
+        tinX = Gop(RutTin(dx.Kenh, xL));
+        Xac(tinX.Contains("Clone da toi, moi GD: XaB"), "clone da toi khu chinh -> bao san sang mot lan: " + tinX);
+
+        // Lenh rut can hang tren clone dang o cua xa -> clone nhuong cho lenh; cua xa khong keo lai clone dang giu hang.
+        xB.GameState.MyChar.BagItems = Tui(30, Mon(463, 3));
+        nhipX();
+        var vxB2 = dx.ViecCua("xaB");
+        dx.RutTuTool(463, -1, 3, "ChuX");
+        nhipX();
+        Xac(vxB2 != null && vxB2.TuNguoi != null && vxB2.BiHuy, "lenh rut 463 (tren xB dang o cua xa) -> xB roi cua nhuong lenh");
+        dx.LayViec(xB);
+        dx.BaoViec(xB, new BaoCaoViec { Viec = vxB2, MaLoi = MaLoiViec.BI_HUY, LyDo = "nhuong cho lenh rut" });
+        nhipX();
+        var vxRut = dx.ViecCua("xaB");
+        xa = LayField(dx, "_xa");
+        var dsXa = xa == null ? null : (List<string>)xa.GetType().GetField("Clone").GetValue(xa);
+        Xac(vxRut != null && vxRut.MucDich == "rut" && dsXa != null && !dsXa.Contains("xaB"),
+            "xB giao lenh rut; cua xa khong keo lai xB (dang giu hang cho lenh)");
+        var lX = dx.Hang.DangMo.FirstOrDefault();
+        if (lX != null) dx.HuyLenhTuTool(lX.So);
+        nhipX();
+        RutTin(dx.Kenh, xL);
+
+        xa = LayField(dx, "_xa");
+        xa.GetType().GetField("Den").SetValue(xa, DateTime.Now.AddSeconds(-1));
+        nhipX();
+        Xac(LayField(dx, "_xa") == null, "het 10 phut khong xa them -> tu dong cua");
+        RutTin(dx.Kenh, xL);
     }
 
     // ================= 11. KhoDieuPhoi (tich hop, khong mang) =================

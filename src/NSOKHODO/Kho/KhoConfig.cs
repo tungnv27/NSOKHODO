@@ -93,6 +93,7 @@ namespace NSOKHODO.Kho
         public bool BatRut = true;
         public bool BatDonKho = true;
         public bool BatCatRuong = true;
+        public bool BatGomChong = true;                  // D81: gom do xep chong rai nhieu clone ve mot nick
         public bool BatDonXu = true;
         public bool BatLenhChat = true;
         public bool BatTheoDoi = true;
@@ -312,6 +313,7 @@ namespace NSOKHODO.Kho
             Ghi(sb, "BatRut", BatRut);
             Ghi(sb, "BatDonKho", BatDonKho);
             Ghi(sb, "BatCatRuong", BatCatRuong);
+            Ghi(sb, "BatGomChong", BatGomChong);
             Ghi(sb, "BatDonXu", BatDonXu);
             Ghi(sb, "BatLenhChat", BatLenhChat);
             Ghi(sb, "BatTheoDoi", BatTheoDoi);
@@ -407,6 +409,7 @@ namespace NSOKHODO.Kho
                 case "BatRut": BatRut = Bool(v); break;
                 case "BatDonKho": BatDonKho = Bool(v); break;
                 case "BatCatRuong": BatCatRuong = Bool(v); break;
+                case "BatGomChong": BatGomChong = Bool(v); break;
                 case "BatDonXu": BatDonXu = Bool(v); break;
                 case "BatLenhChat": BatLenhChat = Bool(v); break;
                 case "BatTheoDoi": BatTheoDoi = Bool(v); break;

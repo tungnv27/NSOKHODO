@@ -27,7 +27,7 @@ namespace NSOKHODO.UI
         private ComboBox _cbLeader, _cbDuPhong;
         private TextBox _txtChuKho;
         private RadioButton _rdNhanTatCa, _rdNhanChiChu;
-        private CheckBox _chkBatNap, _chkBatRut, _chkBatDon, _chkBatCat, _chkBatXu, _chkBatLenh, _chkBatTheo, _chkBatBaoCao;
+        private CheckBox _chkBatNap, _chkBatRut, _chkBatDon, _chkBatCat, _chkBatGom, _chkBatXu, _chkBatLenh, _chkBatTheo, _chkBatBaoCao;
         private CheckBox _chkGioiHanLogin;
         private NumericUpDown _numGioiHanLogin;
         // Kệ
@@ -228,6 +228,8 @@ namespace NSOKHODO.UI
             _chkBatRut = OTick(h, ref y, "Giao lệnh rút", v => _cfg.BatRut = v, "tắt: lệnh vẫn vào hàng chờ nhưng không giao");
             _chkBatDon = OTick(h, ref y, "Dọn kho: Leader chuyển đồ sang clone", v => _cfg.BatDonKho = v);
             _chkBatCat = OTick(h, ref y, "Cất / đọc rương (Leader và clone)", v => _cfg.BatCatRuong = v);
+            _chkBatGom = OTick(h, ref y, "Gom đồ xếp chồng rải nhiều clone về một nick", v => _cfg.BatGomChong = v,
+                "chạy khi kho rảnh (không có lệnh rút, không mở cửa xả)");
             _chkBatXu = OTick(h, ref y, "Dồn xu từ Leader sang clone", v => _cfg.BatDonXu = v);
             _chkBatLenh = OTick(h, ref y, "Lệnh chat của Chủ kho", v => _cfg.BatLenhChat = v);
             _chkBatTheo = OTick(h, ref y, "Theo dõi món", v => _cfg.BatTheoDoi = v);
@@ -380,6 +382,7 @@ namespace NSOKHODO.UI
                 _chkBatRut.Checked = _cfg.BatRut;
                 _chkBatDon.Checked = _cfg.BatDonKho;
                 _chkBatCat.Checked = _cfg.BatCatRuong;
+                _chkBatGom.Checked = _cfg.BatGomChong;
                 _chkBatXu.Checked = _cfg.BatDonXu;
                 _chkBatLenh.Checked = _cfg.BatLenhChat;
                 _chkBatTheo.Checked = _cfg.BatTheoDoi;

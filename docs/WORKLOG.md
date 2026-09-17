@@ -146,6 +146,44 @@ user không.
   hoặc tool Edit.
 - UIA không thấy ô số (`NumericUpDown`) của WinForms → kiểm giao diện bằng harness nạp `MainForm` rồi `DrawToBitmap`.
 
+## 2026-09-17 9h30 → 10h35 — commit vòng 11, gom đồ, cửa xả, log dễ đọc (D80–D85)
+
+**Bối cảnh.** User: sửa các lỗi mức cao / vừa còn lại; gom đồ xếp chồng về một nick (nick trung gian khi nick giữ hàng
+chật — server đòi đủ một ô cho từng chồng); xả nhiều đồ không phải đợi Leader ("nhiều lúc còn không dọn"); log dễ đọc cho
+người dùng thường (user dặn không cần sửa log kỹ thuật). Cho phép commit + push khi thấy ổn. Trước đó 02:1x user gặp cả kho
+"chưa đọc rương" vì khu chính −1 (ảnh có thanh cuộn kiểu Windows cũ + thêm `1khodo1–5` → nhiều khả năng máy khác).
+
+**Làm.**
+- Commit + push vòng 11 (`a530a56`) sau khi build + `chay.ps1` PASS.
+- **D85** cảnh báo khu chính −1. **D80** thú cưỡi: đối chiếu `251/Controller.cs` — gói 31 / 8 / 45 không có byte cấp thú
+  cưỡi, sub 115 có → byte đọc đúng, nhưng khoá món lệch giữa túi và rương → bỏ cấp khỏi khoá cho thú cưỡi.
+- **#9 (lỗi "bay" ở NSOBAOTATL / NSOLITEPRO): KHÔNG làm.** Sửa file NSOBAOTATL bị hệ thống chặn (repo khác); NSOLITEPRO
+  đang có ~1.200 dòng chưa commit của phiên khác, sửa chen vào dễ lẫn → báo user.
+- **D81 gom**, **D82 cửa xả + hai lỗi Leader không dọn** (lời mời bị từ chối vẫn đặt mốc "sắp giao dịch"; Chủ kho trong khu
+  chặn dọn cả khi Leader đầy), **D83 log dễ đọc**, **D84** lệnh khu riêng chờ hàng trên Leader (kiểm kỹ #2: bản cũ huỷ
+  "kho không có hàng").
+- Ca kiểm offline mới: `KiemGomVaXa` + mở rộng `KiemGoKetVaKhu`, `KiemSoKho`, `KiemHangCho`.
+
+**Soát lỗi độc lập (agent) — 9 điểm, đã sửa 8, điểm 7 sửa một phần:**
+1. (cao) Clone ở cửa xả không bao giờ nhường lệnh rút; cửa xả kéo clone đang giữ hàng → lệnh quá hạn bị huỷ. → nhường; bỏ clone giữ hàng.
+2. (cao) Lệnh khu riêng chờ Leader bị đóng "XONG 5/10" khi clone giao xong phần đã lập. → chưa xong khi còn chờ.
+3. (vừa) Clone cửa xả không vào được khu chính thì kẹt mãi; tin "mời GD" gửi trước khi clone tới. → bỏ sau 90 s; báo "đang tới" rồi "đã tới".
+4. (vừa) Đợt gom đếm cả nick không xét được → ghim 60 phút, lặp lại. → chỉ đếm nick xét được; nghỉ 2 phút sau mỗi đợt.
+5. (thấp) Ước lượng lượt gom bỏ qua sức chứa túi nick giao → tính thêm; điểm = giao dịch + số lần đích cất rương.
+6. (thấp) Ngưỡng vào / ra cửa xả 6 ô gây xoay vòng → 12 ô (trọn một lượt).
+7. (thấp) Phân loại `NHAN_GOM` sai thứ tự báo cáo → theo việc nhận; cửa xả chỉ gia hạn khi đúng Chủ kho.
+8. (thấp) Khung log dễ đọc không vẽ lại sau khi mở lại cửa sổ → vẽ lại đầu mỗi nhịp.
+9. (thấp) Thú cưỡi `+cấp` bị bỏ qua không báo → báo Chủ kho + log.
+
+**Test sống** (bảng trong `TEST_2CHANG.md`): gom 10 loại / 1 giao dịch; cửa xả tự mở, xoay vòng, `xa` / `xa xong`; Leader dọn
+khi Chủ kho đứng cạnh; lệnh khu 7 chia clone + Leader 20/20 trong 29 s; gỡ kẹt bản cuối (dựng tungkhodo8 kẹt bằng harness
+người chơi thứ hai) 11 s. Ảnh giao diện: khung log hai chế độ, ô Gom đồ. Nạp trả hết đồ test.
+
+**Bài học.**
+- Heredoc Bash với chuỗi C# có ngoặc lồng / gạch chéo ngược vỡ → ghi script Python ra file (Write) rồi chạy.
+- `grep` đếm phiên theo tên nick khớp cả phiên cũ → đếm theo số dòng trước / sau.
+- Điều kiện kiểm "trạng thái = chờ" sai khi lệnh được giao ngay trong cùng nhịp → kiểm "đang mở, không tạm dừng".
+
 ## 2026-09-17 0h35 → 1h30 — clone kẹt cứng, khu giao riêng (D78, D79), soát lỗi độc lập
 
 **Bối cảnh.** User rút 17 Tử tinh thạch cao cấp → tạm dừng *"chi con 0/17 (17 nam tren acc tam khong dung)"*. Sổ kho

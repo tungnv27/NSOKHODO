@@ -16,6 +16,10 @@ namespace NSOKHODO.Kho
     /// NHAU cho CUNG mot mon - khung giao dich + cmd 8 ghi 4/5 Tu tinh thach "khong han", dang nhap lai
     /// (danh sach tui) ghi ca 5 "co han". Tinh vao khoa thi mot mon nhay qua lai hai dong, ke hoach giao
     /// tro vao khoa clone khong con khop -> "khong du hang". Han chi con la thong tin hien thi.</para>
+    /// <para><b>CAP CUA THU CUOI (type 29..33) cung KHONG thuoc khoa</b> (D80): client chinh chu 251 chi doc
+    /// byte cap cua thu cuoi trong danh sach tui day du (sub 115); ruong (cmd 31), cmd 8 va khung giao dich
+    /// (45) thi khong co byte nay -> cung mot con thu cuoi luc o tui la "tpl+N", cat vao ruong la "tpl".
+    /// Cap luon ghi 0 cho thu cuoi.</para>
     /// </summary>
     public struct KhoaMon : IEquatable<KhoaMon>
     {
@@ -26,7 +30,7 @@ namespace NSOKHODO.Kho
 
         public KhoaMon(short tpl, byte up, bool han, bool khoa)
         {
-            Tpl = tpl; Up = up; Han = han; Khoa = khoa;
+            Tpl = tpl; Up = LaThuCuoi(tpl) ? (byte)0 : up; Han = han; Khoa = khoa;
         }
 
         public static KhoaMon Tu(Item it)
@@ -36,7 +40,15 @@ namespace NSOKHODO.Kho
 
         public bool Khop(Item it)
         {
-            return it != null && !it.IsEmpty && it.TemplateId == Tpl && it.Upgrade == Up && it.IsLock == Khoa;
+            return it != null && !it.IsEmpty && it.TemplateId == Tpl && it.IsLock == Khoa
+                   && (it.Upgrade == Up || LaThuCuoi(Tpl));
+        }
+
+        /// <summary>Template chua biet (bang mon rong) -> coi nhu khong phai thu cuoi.</summary>
+        public static bool LaThuCuoi(short tpl)
+        {
+            var t = BangMon.Lay(tpl);
+            return t != null && t.IsTypeMount;
         }
 
         public bool Equals(KhoaMon o) { return Tpl == o.Tpl && Up == o.Up && Khoa == o.Khoa; }
